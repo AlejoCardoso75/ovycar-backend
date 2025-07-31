@@ -1,0 +1,23 @@
+<svg width="300" height="120" viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo del logo -->
+  <rect width="300" height="120" fill="#2c3e50" rx="10"/>
+  
+  <!-- Silueta del carro -->
+  <path d="M50 40 L70 35 L90 30 L110 25 L130 25 L150 30 L170 35 L190 40 L200 45 L210 50 L215 55 L220 60 L220 70 L215 75 L210 80 L200 85 L190 90 L170 95 L150 100 L130 100 L110 95 L90 90 L70 85 L60 80 L55 75 L50 70 Z" 
+        fill="white" stroke="white" stroke-width="1"/>
+  
+  <!-- Ventanas del carro -->
+  <path d="M80 35 L100 30 L120 30 L140 35 L160 40 L180 45 L190 50 L190 60 L180 65 L160 70 L140 75 L120 75 L100 70 L80 65 Z" 
+        fill="#ecf0f1" stroke="white" stroke-width="1"/>
+  
+  <!-- Ruedas -->
+  <circle cx="90" cy="85" r="8" fill="#34495e" stroke="white" stroke-width="2"/>
+  <circle cx="170" cy="85" r="8" fill="#34495e" stroke="white" stroke-width="2"/>
+  
+  <!-- Texto OVY CAR -->
+  <text x="150" y="110" font-family="Arial, sans-serif" font-size="18" font-weight="bold" 
+        text-anchor="middle" fill="white">OVY CAR</text>
+  
+  <!-- Línea roja decorativa -->
+  <path d="M120 115 Q150 118 180 115" stroke="#e74c3c" stroke-width="3" fill="none"/>
+</svg> 
