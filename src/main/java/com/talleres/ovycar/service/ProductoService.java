@@ -102,7 +102,6 @@ public class ProductoService {
                 producto.getPrecioCompra(),
                 producto.getPrecioVenta(),
                 producto.getStock(),
-                producto.getStockMinimo(),
                 producto.getCategoria(),
                 producto.getMarca(),
                 producto.getFechaRegistro(),

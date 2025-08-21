@@ -2,11 +2,15 @@ package com.talleres.ovycar.service;
 
 import com.talleres.ovycar.dto.MantenimientoDTO;
 import com.talleres.ovycar.dto.DetalleMantenimientoDTO;
+import com.talleres.ovycar.dto.DeleteInfoDTO;
+import com.talleres.ovycar.dto.CreateMantenimientoDTO;
 import com.talleres.ovycar.entity.Mantenimiento;
 import com.talleres.ovycar.entity.DetalleMantenimiento;
+import com.talleres.ovycar.entity.Factura;
 import com.talleres.ovycar.repository.MantenimientoRepository;
 import com.talleres.ovycar.repository.ClienteRepository;
 import com.talleres.ovycar.repository.VehiculoRepository;
+import com.talleres.ovycar.repository.FacturaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +28,7 @@ public class MantenimientoService {
     private final MantenimientoRepository mantenimientoRepository;
     private final ClienteRepository clienteRepository;
     private final VehiculoRepository vehiculoRepository;
+    private final FacturaRepository facturaRepository;
     
     public List<MantenimientoDTO> findAll() {
         return mantenimientoRepository.findAll()
@@ -100,6 +105,29 @@ public class MantenimientoService {
                 .collect(Collectors.toList());
     }
     
+    public MantenimientoDTO createMantenimiento(CreateMantenimientoDTO createMantenimientoDTO) {
+        // Obtener el vehículo y el cliente
+        Vehiculo vehiculo = vehiculoRepository.findById(createMantenimientoDTO.getVehiculoId())
+                .orElseThrow(() -> new RuntimeException("Vehículo no encontrado"));
+        
+        // Crear el mantenimiento
+        Mantenimiento mantenimiento = new Mantenimiento();
+        mantenimiento.setVehiculo(vehiculo);
+        mantenimiento.setCliente(vehiculo.getCliente());
+        mantenimiento.setTipoMantenimiento(createMantenimientoDTO.getTipoMantenimiento());
+        mantenimiento.setDescripcion(createMantenimientoDTO.getDescripcion());
+        // Convertir LocalDate a LocalDateTime (a las 00:00:00)
+        LocalDateTime fechaProgramada = createMantenimientoDTO.getFechaProgramada().atStartOfDay();
+        mantenimiento.setFechaProgramada(fechaProgramada);
+        mantenimiento.setEstado(Mantenimiento.EstadoMantenimiento.valueOf(createMantenimientoDTO.getEstado()));
+        mantenimiento.setKilometrajeActual(createMantenimientoDTO.getKilometrajeActual());
+        mantenimiento.setObservaciones(createMantenimientoDTO.getObservaciones());
+        mantenimiento.setCosto(createMantenimientoDTO.getCosto());
+        mantenimiento.setMecanico(createMantenimientoDTO.getMecanico());
+        
+        return convertToDTO(mantenimientoRepository.save(mantenimiento));
+    }
+    
     public MantenimientoDTO save(Mantenimiento mantenimiento) {
         // Si es un mantenimiento nuevo, obtener el cliente del vehículo
         if (mantenimiento.getId() == null) {
@@ -116,9 +144,10 @@ public class MantenimientoService {
             existingMantenimiento.setFechaProgramada(mantenimiento.getFechaProgramada());
             existingMantenimiento.setEstado(mantenimiento.getEstado());
             existingMantenimiento.setKilometrajeActual(mantenimiento.getKilometrajeActual());
-            existingMantenimiento.setKilometrajeProximo(mantenimiento.getKilometrajeProximo());
+            // existingMantenimiento.setKilometrajeProximo(mantenimiento.getKilometrajeProximo());
             existingMantenimiento.setObservaciones(mantenimiento.getObservaciones());
             existingMantenimiento.setCosto(mantenimiento.getCosto());
+            existingMantenimiento.setMecanico(mantenimiento.getMecanico());
             
             return convertToDTO(mantenimientoRepository.save(existingMantenimiento));
         }
@@ -159,7 +188,75 @@ public class MantenimientoService {
     }
     
     public void deleteById(Long id) {
+        // Check if mantenimiento exists
+        Mantenimiento mantenimiento = mantenimientoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mantenimiento no encontrado"));
+        
+        // Check if there are any facturas that reference this mantenimiento
+        if (facturaRepository.existsByMantenimientoId(id)) {
+            throw new RuntimeException("No se puede eliminar el mantenimiento porque tiene facturas asociadas. " +
+                    "Elimine las facturas relacionadas primero o cambie el estado del mantenimiento a CANCELADO.");
+        }
+        
+        // If no facturas are associated, proceed with deletion
         mantenimientoRepository.deleteById(id);
+    }
+    
+    public void deleteByIdWithCascade(Long id) {
+        // Check if mantenimiento exists
+        Mantenimiento mantenimiento = mantenimientoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mantenimiento no encontrado"));
+        
+        // Delete associated facturas first
+        List<Factura> facturas = facturaRepository.findByMantenimientoId(id);
+        facturaRepository.deleteAll(facturas);
+        
+        // Then delete the mantenimiento
+        mantenimientoRepository.deleteById(id);
+    }
+    
+    public boolean canDeleteMantenimiento(Long id) {
+        // First check if mantenimiento exists
+        if (!mantenimientoRepository.existsById(id)) {
+            return false;
+        }
+        // Then check if there are no facturas associated
+        return !facturaRepository.existsByMantenimientoId(id);
+    }
+    
+    public List<Factura> getFacturasByMantenimientoId(Long id) {
+        // First check if mantenimiento exists
+        if (!mantenimientoRepository.existsById(id)) {
+            throw new RuntimeException("Mantenimiento no encontrado");
+        }
+        return facturaRepository.findByMantenimientoId(id);
+    }
+    
+    public DeleteInfoDTO getDeleteInfo(Long id) {
+        // Check if mantenimiento exists
+        if (!mantenimientoRepository.existsById(id)) {
+            return new DeleteInfoDTO(false, "Mantenimiento no encontrado", 0, null);
+        }
+        
+        // Check if there are facturas associated
+        List<Factura> facturas = facturaRepository.findByMantenimientoId(id);
+        boolean canDelete = facturas.isEmpty();
+        
+        String reason = canDelete ? 
+            "El mantenimiento puede ser eliminado" : 
+            "No se puede eliminar porque tiene facturas asociadas";
+        
+        List<DeleteInfoDTO.FacturaInfoDTO> facturasInfo = facturas.stream()
+            .map(factura -> new DeleteInfoDTO.FacturaInfoDTO(
+                factura.getId(),
+                factura.getNumeroFactura(),
+                factura.getEstado().toString(),
+                factura.getFechaEmision().toString(),
+                factura.getTotal().doubleValue()
+            ))
+            .collect(Collectors.toList());
+        
+        return new DeleteInfoDTO(canDelete, reason, facturas.size(), facturasInfo);
     }
     
     private MantenimientoDTO convertToDTO(Mantenimiento mantenimiento) {
@@ -181,6 +278,7 @@ public class MantenimientoService {
                 mantenimiento.getKilometrajeProximo(),
                 mantenimiento.getObservaciones(),
                 mantenimiento.getCosto(),
+                mantenimiento.getMecanico(),
                 mantenimiento.getFechaRegistro(),
                 mantenimiento.getDetalles() != null ? 
                     mantenimiento.getDetalles().stream()

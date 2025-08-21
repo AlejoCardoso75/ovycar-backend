@@ -3,22 +3,21 @@ package com.talleres.ovycar.dto;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductoDTO {
+public class EgresoDTO {
     private Long id;
-    private String nombre;
+    private String concepto;
     private String descripcion;
-    private String codigo;
-    private BigDecimal precioCompra;
-    private BigDecimal precioVenta;
-    private Integer stock;
+    private BigDecimal monto;
     private String categoria;
-    private String marca;
+    private LocalDateTime fechaEgreso;
     private LocalDateTime fechaRegistro;
+    private String responsable;
     private Boolean activo;
-} 
+}

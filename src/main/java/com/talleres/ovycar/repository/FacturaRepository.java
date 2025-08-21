@@ -40,4 +40,8 @@ public interface FacturaRepository extends JpaRepository<Factura, Long> {
 
     @Query("SELECT f FROM Factura f WHERE f.numeroFactura LIKE %:termino% OR f.cliente.nombre LIKE %:termino% OR f.cliente.apellido LIKE %:termino% OR f.estado LIKE %:termino%")
     List<Factura> buscarFacturas(@Param("termino") String termino);
+    
+    List<Factura> findByMantenimientoId(Long mantenimientoId);
+    
+    boolean existsByMantenimientoId(Long mantenimientoId);
 } 

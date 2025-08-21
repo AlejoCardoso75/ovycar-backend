@@ -24,7 +24,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     @Query("SELECT p FROM Producto p WHERE p.marca = :marca")
     List<Producto> findByMarca(@Param("marca") String marca);
     
-    @Query("SELECT p FROM Producto p WHERE p.stock <= p.stockMinimo")
+    @Query("SELECT p FROM Producto p WHERE p.stock <= 3")
     List<Producto> findProductosStockBajo();
     
     @Query("SELECT p FROM Producto p WHERE p.stock = 0")

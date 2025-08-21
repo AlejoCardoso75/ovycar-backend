@@ -36,9 +36,6 @@ public class Producto {
     @Column(nullable = false)
     private Integer stock;
     
-    @Column(name = "stock_minimo")
-    private Integer stockMinimo;
-    
     @Column(length = 50)
     private String categoria;
     

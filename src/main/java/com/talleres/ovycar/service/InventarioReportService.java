@@ -113,8 +113,8 @@ public class InventarioReportService {
             .setMarginBottom(20);
         document.add(fecha);
 
-        // Obtener todos los productos
-        List<ProductoDTO> productos = productoRepository.findAll().stream()
+        // Obtener solo productos activos (igual que el frontend)
+        List<ProductoDTO> productos = productoRepository.findByActivoTrue().stream()
             .map(this::convertToDTO)
             .collect(java.util.stream.Collectors.toList());
 
@@ -269,7 +269,7 @@ public class InventarioReportService {
     }
 
     public byte[] generarInventarioExcel() throws IOException {
-        List<ProductoDTO> productos = productoRepository.findAll().stream()
+        List<ProductoDTO> productos = productoRepository.findByActivoTrue().stream()
             .map(this::convertToDTO)
             .collect(java.util.stream.Collectors.toList());
 

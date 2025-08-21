@@ -57,6 +57,9 @@ public class Mantenimiento {
     @Column(name = "costo")
     private Double costo;
     
+    @Column(name = "mecanico", length = 100)
+    private String mecanico;
+    
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro;
     
