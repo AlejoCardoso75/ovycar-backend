@@ -39,9 +39,18 @@ public class IngresosService {
         System.out.println("=== DEBUG: MANTENIMIENTOS Y SUS SEMANAS ===");
         for (Mantenimiento m : mantenimientosValidos) {
             String semana = getSemanaFromDate(m);
+            LocalDate fecha = m.getFechaProgramada().toLocalDate();
+            
+            // Calcular el rango de la semana para mostrar
+            LocalDate[] fechasSemana = getFechasSemana(semana);
+            LocalDate inicioSemana = fechasSemana[0];
+            LocalDate finSemana = fechasSemana[1];
+            
             System.out.println("Mantenimiento ID: " + m.getId() + 
                              ", Fecha Programada: " + m.getFechaProgramada() + 
-                             ", Semana calculada: " + semana);
+                             ", Semana calculada: " + semana +
+                             ", Rango semana: " + inicioSemana + " a " + finSemana +
+                             ", Día de la semana: " + fecha.getDayOfWeek());
         }
         System.out.println("==========================================");
 
@@ -176,29 +185,39 @@ public class IngresosService {
         if (mantenimiento.getFechaProgramada() == null) return "";
         
         LocalDate fecha = mantenimiento.getFechaProgramada().toLocalDate();
-        int year = fecha.getYear();
         
-        // Calcular la semana manualmente para domingo a domingo
-        // Encontrar el primer domingo del año
+        // Calcular la semana usando el calendario colombiano (domingo a domingo)
+        // Encontrar el domingo más cercano hacia atrás
+        LocalDate domingoSemana = fecha;
+        while (domingoSemana.getDayOfWeek().getValue() != 7) { // 7 = domingo
+            domingoSemana = domingoSemana.minusDays(1);
+        }
+        
+        // Si el domingo encontrado es del año anterior, ajustar
+        int year = domingoSemana.getYear();
+        if (domingoSemana.getYear() < fecha.getYear()) {
+            year = fecha.getYear();
+        }
+        
+        // Calcular el número de semana
         LocalDate firstDayOfYear = LocalDate.of(year, 1, 1);
         LocalDate firstSunday = firstDayOfYear;
-        while (firstSunday.getDayOfWeek().getValue() != 7) { // 7 = domingo
+        while (firstSunday.getDayOfWeek().getValue() != 7) {
             firstSunday = firstSunday.plusDays(1);
         }
         
-        // Si la fecha es anterior al primer domingo, pertenece a la semana 0 del año anterior
+        // Si la fecha es anterior al primer domingo del año, usar el año anterior
         if (fecha.isBefore(firstSunday)) {
             year = year - 1;
-            LocalDate firstDayOfPreviousYear = LocalDate.of(year, 1, 1);
-            LocalDate firstSundayOfPreviousYear = firstDayOfPreviousYear;
-            while (firstSundayOfPreviousYear.getDayOfWeek().getValue() != 7) {
-                firstSundayOfPreviousYear = firstSundayOfPreviousYear.plusDays(1);
+            firstDayOfYear = LocalDate.of(year, 1, 1);
+            firstSunday = firstDayOfYear;
+            while (firstSunday.getDayOfWeek().getValue() != 7) {
+                firstSunday = firstSunday.plusDays(1);
             }
-            firstSunday = firstSundayOfPreviousYear;
         }
         
         // Calcular la diferencia en días desde el primer domingo
-        long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(firstSunday, fecha);
+        long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(firstSunday, domingoSemana);
         int week = (int) (daysDiff / 7) + 1;
         
         return String.format("%d-%02d", year, week);
@@ -217,11 +236,12 @@ public class IngresosService {
                 firstSunday = firstSunday.plusDays(1);
             }
             
-            // Calcular el domingo de la semana especificada
-            LocalDate sunday = firstSunday.plusWeeks(week - 1);
-            LocalDate nextSunday = sunday.plusDays(7);
+            // Calcular el domingo de inicio de la semana especificada
+            LocalDate startOfWeek = firstSunday.plusWeeks(week - 1);
+            // El fin de la semana es el domingo siguiente (para mostrar domingo a domingo)
+            LocalDate endOfWeek = startOfWeek.plusDays(7);
             
-            return new LocalDate[]{sunday, nextSunday.minusDays(1)};
+            return new LocalDate[]{startOfWeek, endOfWeek};
         } catch (Exception e) {
             // En caso de error, retornar la semana actual (domingo a domingo)
             LocalDate now = LocalDate.now();
@@ -234,10 +254,10 @@ public class IngresosService {
             long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(firstSunday, now);
             int currentWeek = (int) (daysDiff / 7) + 1;
             
-            LocalDate sunday = firstSunday.plusWeeks(currentWeek - 1);
-            LocalDate nextSunday = sunday.plusDays(7);
+            LocalDate startOfWeek = firstSunday.plusWeeks(currentWeek - 1);
+            LocalDate endOfWeek = startOfWeek.plusDays(7);
             
-            return new LocalDate[]{sunday, nextSunday.minusDays(1)};
+            return new LocalDate[]{startOfWeek, endOfWeek};
         }
     }
 
