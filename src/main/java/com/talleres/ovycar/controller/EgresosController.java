@@ -13,7 +13,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/egresos-reportes")
-@CrossOrigin(origins = "*")
 public class EgresosController {
 
     @Autowired
