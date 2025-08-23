@@ -42,9 +42,28 @@ public class ClienteService {
     }
     
     public ClienteDTO save(Cliente cliente) {
-        if (cliente.getId() == null && clienteRepository.existsByDocumento(cliente.getDocumento())) {
-            throw new RuntimeException("Ya existe un cliente con el documento: " + cliente.getDocumento());
+        // Validar campos obligatorios
+        if (cliente.getNombre() == null || cliente.getNombre().trim().isEmpty()) {
+            throw new RuntimeException("El nombre es obligatorio");
         }
+        if (cliente.getApellido() == null || cliente.getApellido().trim().isEmpty()) {
+            throw new RuntimeException("El apellido es obligatorio");
+        }
+        if (cliente.getTelefono() == null || cliente.getTelefono().trim().isEmpty()) {
+            throw new RuntimeException("El teléfono es obligatorio");
+        }
+        
+        // Limpiar campos opcionales si están vacíos
+        if (cliente.getDocumento() != null && cliente.getDocumento().trim().isEmpty()) {
+            cliente.setDocumento(null);
+        }
+        if (cliente.getEmail() != null && cliente.getEmail().trim().isEmpty()) {
+            cliente.setEmail(null);
+        }
+        if (cliente.getDireccion() != null && cliente.getDireccion().trim().isEmpty()) {
+            cliente.setDireccion(null);
+        }
+        
         return convertToDTO(clienteRepository.save(cliente));
     }
     

@@ -27,4 +27,6 @@ public interface VehiculoRepository extends JpaRepository<Vehiculo, Long> {
     List<Vehiculo> findByModeloContaining(@Param("modelo") String modelo);
     
     boolean existsByPlaca(String placa);
+    
+    boolean existsByPlacaAndActivoTrue(String placa);
 } 

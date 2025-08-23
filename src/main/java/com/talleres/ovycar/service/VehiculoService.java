@@ -30,17 +30,20 @@ public class VehiculoService {
     
     public Optional<VehiculoDTO> findById(Long id) {
         return vehiculoRepository.findById(id)
+                .filter(vehiculo -> vehiculo.getActivo()) // Solo vehículos activos
                 .map(this::convertToDTO);
     }
     
     public Optional<VehiculoDTO> findByPlaca(String placa) {
         return vehiculoRepository.findByPlaca(placa)
+                .filter(vehiculo -> vehiculo.getActivo()) // Solo vehículos activos
                 .map(this::convertToDTO);
     }
     
     public List<VehiculoDTO> findByClienteId(Long clienteId) {
         return vehiculoRepository.findByClienteId(clienteId)
                 .stream()
+                .filter(vehiculo -> vehiculo.getActivo()) // Solo vehículos activos
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -48,6 +51,7 @@ public class VehiculoService {
     public List<VehiculoDTO> findByPlacaContaining(String placa) {
         return vehiculoRepository.findByPlacaContaining(placa)
                 .stream()
+                .filter(vehiculo -> vehiculo.getActivo()) // Solo vehículos activos
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -55,13 +59,14 @@ public class VehiculoService {
     public List<VehiculoDTO> findByMarcaContaining(String marca) {
         return vehiculoRepository.findByMarcaContaining(marca)
                 .stream()
+                .filter(vehiculo -> vehiculo.getActivo()) // Solo vehículos activos
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
     
     public VehiculoDTO save(Vehiculo vehiculo) {
-        if (vehiculo.getId() == null && vehiculoRepository.existsByPlaca(vehiculo.getPlaca())) {
-            throw new RuntimeException("Ya existe un vehículo con la placa: " + vehiculo.getPlaca());
+        if (vehiculo.getId() == null && vehiculoRepository.existsByPlacaAndActivoTrue(vehiculo.getPlaca())) {
+            throw new RuntimeException("Ya existe un vehículo activo con la placa: " + vehiculo.getPlaca());
         }
         return convertToDTO(vehiculoRepository.save(vehiculo));
     }
@@ -71,9 +76,9 @@ public class VehiculoService {
         Cliente cliente = clienteRepository.findById(createVehiculoDTO.getClienteId())
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado con ID: " + createVehiculoDTO.getClienteId()));
         
-        // Verificar que la placa no existe
-        if (vehiculoRepository.existsByPlaca(createVehiculoDTO.getPlaca())) {
-            throw new RuntimeException("Ya existe un vehículo con la placa: " + createVehiculoDTO.getPlaca());
+        // Verificar que la placa no existe en vehículos activos
+        if (vehiculoRepository.existsByPlacaAndActivoTrue(createVehiculoDTO.getPlaca())) {
+            throw new RuntimeException("Ya existe un vehículo activo con la placa: " + createVehiculoDTO.getPlaca());
         }
         
         // Crear el vehículo
@@ -99,10 +104,10 @@ public class VehiculoService {
         Cliente cliente = clienteRepository.findById(createVehiculoDTO.getClienteId())
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado con ID: " + createVehiculoDTO.getClienteId()));
         
-        // Verificar que la placa no existe en otro vehículo
+        // Verificar que la placa no existe en otro vehículo activo
         if (!vehiculo.getPlaca().equals(createVehiculoDTO.getPlaca()) && 
-            vehiculoRepository.existsByPlaca(createVehiculoDTO.getPlaca())) {
-            throw new RuntimeException("Ya existe un vehículo con la placa: " + createVehiculoDTO.getPlaca());
+            vehiculoRepository.existsByPlacaAndActivoTrue(createVehiculoDTO.getPlaca())) {
+            throw new RuntimeException("Ya existe un vehículo activo con la placa: " + createVehiculoDTO.getPlaca());
         }
         
         // Actualizar el vehículo

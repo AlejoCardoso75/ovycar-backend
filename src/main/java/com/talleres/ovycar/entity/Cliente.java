@@ -23,10 +23,10 @@ public class Cliente {
     @Column(nullable = false, length = 100)
     private String apellido;
     
-    @Column(unique = true, nullable = false, length = 20)
+    @Column(unique = true, nullable = true, length = 20)
     private String documento;
     
-    @Column(length = 15)
+    @Column(nullable = false, length = 15)
     private String telefono;
     
     @Column(length = 100)

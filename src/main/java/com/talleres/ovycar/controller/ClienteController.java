@@ -41,23 +41,23 @@ public class ClienteController {
     }
     
     @PostMapping
-    public ResponseEntity<ClienteDTO> createCliente(@RequestBody Cliente cliente) {
+    public ResponseEntity<?> createCliente(@RequestBody Cliente cliente) {
         try {
             ClienteDTO savedCliente = clienteService.save(cliente);
             return ResponseEntity.ok(savedCliente);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<ClienteDTO> updateCliente(@PathVariable Long id, @RequestBody Cliente cliente) {
+    public ResponseEntity<?> updateCliente(@PathVariable Long id, @RequestBody Cliente cliente) {
         cliente.setId(id);
         try {
             ClienteDTO updatedCliente = clienteService.save(cliente);
             return ResponseEntity.ok(updatedCliente);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
     

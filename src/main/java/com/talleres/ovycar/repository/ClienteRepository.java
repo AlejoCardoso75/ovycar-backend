@@ -22,4 +22,7 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     List<Cliente> findByTelefonoContaining(@Param("telefono") String telefono);
     
     boolean existsByDocumento(String documento);
+    
+    @Query("SELECT COUNT(c) > 0 FROM Cliente c WHERE c.documento = :documento AND c.documento IS NOT NULL")
+    boolean existsByDocumentoNotNull(@Param("documento") String documento);
 } 
