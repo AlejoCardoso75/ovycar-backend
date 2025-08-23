@@ -11,11 +11,13 @@ import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.itextpdf.kernel.pdf.canvas.draw.SolidLine;
+import com.itextpdf.io.image.ImageDataFactory;
 import com.talleres.ovycar.dto.ProductoDTO;
 import com.talleres.ovycar.repository.ProductoRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -43,75 +45,158 @@ public class InventarioReportService {
         PdfFont fontNormal = PdfFontFactory.createFont();
         PdfFont fontItalic = PdfFontFactory.createFont();
 
-        // Crear logo usando elementos de iText
-        com.itextpdf.layout.element.Table logoTable = new com.itextpdf.layout.element.Table(1).useAllAvailableWidth();
-        logoTable.setMarginBottom(20);
+        // Crear header con logo
+        com.itextpdf.layout.element.Table headerTable = new com.itextpdf.layout.element.Table(2).useAllAvailableWidth();
+        headerTable.setMarginBottom(20);
 
-        // Fondo del logo
-        com.itextpdf.layout.element.Cell logoCell = new com.itextpdf.layout.element.Cell();
-        logoCell.setBackgroundColor(ColorConstants.DARK_GRAY);
-        logoCell.setHeight(80);
-        logoCell.setBorder(null);
-        logoCell.setPadding(10);
+        try {
+            // Intentar cargar la imagen del logo - probar diferentes rutas
+            ClassPathResource logoResource = new ClassPathResource("static/images/logo-taller.png");
+            if (!logoResource.exists()) {
+                logoResource = new ClassPathResource("images/logo-taller.png");
+            }
+            if (!logoResource.exists()) {
+                logoResource = new ClassPathResource("logo-taller.png");
+            }
+            
+            System.out.println("Intentando cargar logo desde: " + logoResource.getPath());
+            System.out.println("Logo existe: " + logoResource.exists());
+            
+            if (logoResource.exists()) {
+                // Celda con logo
+                com.itextpdf.layout.element.Cell logoCell = new com.itextpdf.layout.element.Cell();
+                logoCell.setBorder(null);
+                logoCell.setPadding(10);
+                logoCell.setWidth(UnitValue.createPercentValue(30));
+                
+                byte[] imageBytes = logoResource.getInputStream().readAllBytes();
+                System.out.println("Tamaño de la imagen: " + imageBytes.length + " bytes");
+                
+                Image logoImage = new Image(ImageDataFactory.create(imageBytes));
+                logoImage.setWidth(120);
+                logoImage.setHeight(80);
+                logoCell.add(logoImage);
+                
+                headerTable.addCell(logoCell);
+                System.out.println("Logo agregado exitosamente al PDF");
+            } else {
+                // Si no existe la imagen, crear logo con texto
+                com.itextpdf.layout.element.Cell logoCell = new com.itextpdf.layout.element.Cell();
+                logoCell.setBackgroundColor(ColorConstants.DARK_GRAY);
+                logoCell.setHeight(80);
+                logoCell.setBorder(null);
+                logoCell.setPadding(10);
+                logoCell.setWidth(UnitValue.createPercentValue(30));
 
-        // Contenido del logo
-        Paragraph logoTitle = new Paragraph("OVY CAR")
+                Paragraph logoTitle = new Paragraph("TALLERES OVIEDO")
+                    .setFont(fontBold)
+                    .setFontSize(18)
+                    .setFontColor(ColorConstants.WHITE)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(5);
+
+                Paragraph logoSubtitle = new Paragraph("TALLER AUTOMOTRIZ")
+                    .setFont(fontNormal)
+                    .setFontSize(10)
+                    .setFontColor(ColorConstants.WHITE)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(5);
+
+                LineSeparator redLine = new LineSeparator(new SolidLine(2));
+                redLine.setStrokeColor(ColorConstants.RED);
+                redLine.setMarginTop(5);
+                redLine.setMarginBottom(5);
+
+                logoCell.add(logoTitle);
+                logoCell.add(logoSubtitle);
+                logoCell.add(redLine);
+                
+                headerTable.addCell(logoCell);
+            }
+        } catch (Exception e) {
+            // Fallback a logo con texto si hay error
+            com.itextpdf.layout.element.Cell logoCell = new com.itextpdf.layout.element.Cell();
+            logoCell.setBackgroundColor(ColorConstants.DARK_GRAY);
+            logoCell.setHeight(80);
+            logoCell.setBorder(null);
+            logoCell.setPadding(10);
+            logoCell.setWidth(UnitValue.createPercentValue(30));
+
+            Paragraph logoTitle = new Paragraph("TALLERES OVIEDO")
+                .setFont(fontBold)
+                .setFontSize(18)
+                .setFontColor(ColorConstants.WHITE)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(5);
+
+            Paragraph logoSubtitle = new Paragraph("TALLER AUTOMOTRIZ")
+                .setFont(fontNormal)
+                .setFontSize(10)
+                .setFontColor(ColorConstants.WHITE)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(5);
+
+            LineSeparator redLine = new LineSeparator(new SolidLine(2));
+            redLine.setStrokeColor(ColorConstants.RED);
+            redLine.setMarginTop(5);
+            redLine.setMarginBottom(5);
+
+            logoCell.add(logoTitle);
+            logoCell.add(logoSubtitle);
+            logoCell.add(redLine);
+            
+            headerTable.addCell(logoCell);
+        }
+
+        // Celda con información del reporte
+        com.itextpdf.layout.element.Cell infoCell = new com.itextpdf.layout.element.Cell();
+        infoCell.setBorder(null);
+        infoCell.setPadding(10);
+        infoCell.setWidth(UnitValue.createPercentValue(70));
+        infoCell.setTextAlignment(TextAlignment.RIGHT);
+
+        Paragraph reportTitle = new Paragraph("INFORME DE INVENTARIO")
             .setFont(fontBold)
-            .setFontSize(24)
-            .setFontColor(ColorConstants.WHITE)
-            .setTextAlignment(TextAlignment.CENTER)
+            .setFontSize(16)
+            .setTextAlignment(TextAlignment.RIGHT)
             .setMarginBottom(5);
 
-        Paragraph logoSubtitle = new Paragraph("TALLER AUTOMOTRIZ")
+        Paragraph reportDate = new Paragraph("Fecha: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")))
             .setFont(fontNormal)
             .setFontSize(12)
-            .setFontColor(ColorConstants.WHITE)
-            .setTextAlignment(TextAlignment.CENTER)
+            .setTextAlignment(TextAlignment.RIGHT)
             .setMarginBottom(5);
 
-        // Línea roja decorativa
-        LineSeparator redLine = new LineSeparator(new SolidLine(2));
-        redLine.setStrokeColor(ColorConstants.RED);
-        redLine.setMarginTop(5);
-        redLine.setMarginBottom(5);
-
-        logoCell.add(logoTitle);
-        logoCell.add(logoSubtitle);
-        logoCell.add(redLine);
-
-        logoTable.addCell(logoCell);
-        document.add(logoTable);
-
-        // Información de contacto
-        Paragraph address = new Paragraph("Dirección: Calle Principal #123, Ciudad")
+        Paragraph reportContact = new Paragraph("Cel: 316 307 0025 - 311 224 0983 | Email: info@talleresoviedo.com")
             .setFont(fontNormal)
             .setFontSize(10)
-            .setTextAlignment(TextAlignment.CENTER)
+            .setTextAlignment(TextAlignment.RIGHT);
+
+        infoCell.add(reportTitle);
+        infoCell.add(reportDate);
+        infoCell.add(reportContact);
+
+        Paragraph reportAddress = new Paragraph("Cra. 15 No. 1D - 07 Barrio Quebraditas, Neiva - Huila")
+            .setFont(fontNormal)
+            .setFontSize(10)
+            .setTextAlignment(TextAlignment.RIGHT)
             .setMarginBottom(5);
-        document.add(address);
 
-        Paragraph phone = new Paragraph("Tel: (123) 456-7890 | Email: info@ovycar.com")
+        Paragraph reportNit = new Paragraph("NIT: 7732904-1")
             .setFont(fontNormal)
             .setFontSize(10)
-            .setTextAlignment(TextAlignment.CENTER)
-            .setMarginBottom(20);
-        document.add(phone);
+            .setTextAlignment(TextAlignment.RIGHT);
 
-        // Título del reporte
-        Paragraph titulo = new Paragraph("INFORME DE INVENTARIO")
-            .setFont(fontBold)
-            .setFontSize(18)
-            .setTextAlignment(TextAlignment.CENTER)
-            .setMarginBottom(10);
-        document.add(titulo);
+        infoCell.add(reportAddress);
+        infoCell.add(reportNit);
 
-        // Fecha del reporte
-        Paragraph fecha = new Paragraph("Fecha: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")))
-            .setFont(fontNormal)
-            .setFontSize(12)
-            .setTextAlignment(TextAlignment.CENTER)
-            .setMarginBottom(20);
-        document.add(fecha);
+        headerTable.addCell(infoCell);
+        document.add(headerTable);
+
+        // Línea separadora
+        LineSeparator separator = new LineSeparator(new SolidLine());
+        separator.setMarginBottom(20);
+        document.add(separator);
 
         // Obtener solo productos activos (igual que el frontend)
         List<ProductoDTO> productos = productoRepository.findByActivoTrue().stream()
@@ -250,19 +335,26 @@ public class InventarioReportService {
         footerSeparator.setMarginBottom(10);
         document.add(footerSeparator);
 
-        Paragraph footer = new Paragraph("Reporte generado automáticamente por Ovy Car")
+        Paragraph footer = new Paragraph("Reporte generado automáticamente por Talleres Oviedo")
             .setFont(fontItalic)
             .setFontSize(10)
             .setTextAlignment(TextAlignment.CENTER)
             .setMarginBottom(5);
         document.add(footer);
 
-        Paragraph footerContact = new Paragraph("www.ovycar.com | (123) 456-7890 | info@ovycar.com")
+        Paragraph footerContact = new Paragraph("Cel: 316 307 0025 - 311 224 0983 | info@talleresoviedo.com")
+            .setFont(fontNormal)
+            .setFontSize(8)
+            .setTextAlignment(TextAlignment.CENTER)
+            .setMarginBottom(5);
+        document.add(footerContact);
+
+        Paragraph footerNit = new Paragraph(" Cra. 15 No. 1D - 07")
             .setFont(fontNormal)
             .setFontSize(8)
             .setTextAlignment(TextAlignment.CENTER)
             .setMarginBottom(10);
-        document.add(footerContact);
+        document.add(footerNit);
 
         document.close();
         return baos.toByteArray();
