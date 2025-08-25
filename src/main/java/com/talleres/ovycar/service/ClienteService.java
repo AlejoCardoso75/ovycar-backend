@@ -18,7 +18,7 @@ public class ClienteService {
     private final ClienteRepository clienteRepository;
     
     public List<ClienteDTO> findAll() {
-        return clienteRepository.findByActivoTrue()
+        return clienteRepository.findAll()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -68,11 +68,7 @@ public class ClienteService {
     }
     
     public void deleteById(Long id) {
-        Optional<Cliente> cliente = clienteRepository.findById(id);
-        if (cliente.isPresent()) {
-            cliente.get().setActivo(false);
-            clienteRepository.save(cliente.get());
-        }
+        clienteRepository.deleteById(id);
     }
     
     private ClienteDTO convertToDTO(Cliente cliente) {

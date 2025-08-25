@@ -123,6 +123,11 @@ public class MantenimientoService {
         mantenimiento.setKilometrajeActual(createMantenimientoDTO.getKilometrajeActual());
         mantenimiento.setObservaciones(createMantenimientoDTO.getObservaciones());
         mantenimiento.setCosto(createMantenimientoDTO.getCosto());
+        mantenimiento.setCostoManoObra(createMantenimientoDTO.getCostoManoObra());
+        mantenimiento.setValorRepuestos(createMantenimientoDTO.getValorRepuestos());
+        mantenimiento.setCostoAdicionales(createMantenimientoDTO.getCostoAdicionales());
+        mantenimiento.setProveedorRepuestos(createMantenimientoDTO.getProveedorRepuestos());
+        mantenimiento.setGarantia(createMantenimientoDTO.getGarantia());
         mantenimiento.setMecanico(createMantenimientoDTO.getMecanico());
         
         return convertToDTO(mantenimientoRepository.save(mantenimiento));
@@ -147,7 +152,18 @@ public class MantenimientoService {
             // existingMantenimiento.setKilometrajeProximo(mantenimiento.getKilometrajeProximo());
             existingMantenimiento.setObservaciones(mantenimiento.getObservaciones());
             existingMantenimiento.setCosto(mantenimiento.getCosto());
+            existingMantenimiento.setCostoManoObra(mantenimiento.getCostoManoObra());
+            existingMantenimiento.setValorRepuestos(mantenimiento.getValorRepuestos());
+            existingMantenimiento.setCostoAdicionales(mantenimiento.getCostoAdicionales());
+            existingMantenimiento.setProveedorRepuestos(mantenimiento.getProveedorRepuestos());
+            existingMantenimiento.setGarantia(mantenimiento.getGarantia());
             existingMantenimiento.setMecanico(mantenimiento.getMecanico());
+            
+            // Si el estado cambia a COMPLETADO, establecer la fecha de fin
+            if (mantenimiento.getEstado() == Mantenimiento.EstadoMantenimiento.COMPLETADO && 
+                existingMantenimiento.getFechaFin() == null) {
+                existingMantenimiento.setFechaFin(LocalDateTime.now());
+            }
             
             return convertToDTO(mantenimientoRepository.save(existingMantenimiento));
         }
@@ -278,6 +294,11 @@ public class MantenimientoService {
                 mantenimiento.getKilometrajeProximo(),
                 mantenimiento.getObservaciones(),
                 mantenimiento.getCosto(),
+                mantenimiento.getCostoManoObra(),
+                mantenimiento.getValorRepuestos(),
+                mantenimiento.getCostoAdicionales(),
+                mantenimiento.getProveedorRepuestos(),
+                mantenimiento.getGarantia(),
                 mantenimiento.getMecanico(),
                 mantenimiento.getFechaRegistro(),
                 mantenimiento.getDetalles() != null ? 

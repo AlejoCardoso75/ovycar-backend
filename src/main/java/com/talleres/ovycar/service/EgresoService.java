@@ -21,7 +21,7 @@ public class EgresoService {
     private final EgresoRepository egresoRepository;
     
     public List<EgresoDTO> findAll() {
-        return egresoRepository.findByActivoTrue()
+        return egresoRepository.findAll()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -65,8 +65,7 @@ public class EgresoService {
     public boolean deleteEgreso(Long id) {
         return egresoRepository.findById(id)
                 .map(egreso -> {
-                    egreso.setActivo(false);
-                    egresoRepository.save(egreso);
+                    egresoRepository.delete(egreso);
                     return true;
                 })
                 .orElse(false);

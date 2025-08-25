@@ -69,10 +69,28 @@ public class AuthService {
                 "Credenciales inválidas",
                 false
             );
+        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            return new AuthResponseDTO(
+                null, null, null, null, null,
+                "Usuario o contraseña incorrectos",
+                false
+            );
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            return new AuthResponseDTO(
+                null, null, null, null, null,
+                "La cuenta está deshabilitada",
+                false
+            );
+        } catch (org.springframework.security.authentication.LockedException e) {
+            return new AuthResponseDTO(
+                null, null, null, null, null,
+                "La cuenta está bloqueada",
+                false
+            );
         } catch (Exception e) {
             return new AuthResponseDTO(
                 null, null, null, null, null,
-                "Error de autenticación: " + e.getMessage(),
+                "Error de autenticación. Por favor, inténtelo de nuevo",
                 false
             );
         }
@@ -174,5 +192,56 @@ public class AuthService {
     public boolean isUserActive(String username) {
         Optional<Usuario> usuario = usuarioRepository.findByUsername(username);
         return usuario.isPresent() && usuario.get().getActivo();
+    }
+
+    public AuthResponseDTO extendSession(String token) {
+        if (token != null && !token.isEmpty()) {
+            try {
+                // Validar JWT token actual
+                if (jwtService.validateToken(token)) {
+                    String username = jwtService.extractUsername(token);
+                    
+                    // Verificar que el usuario esté activo
+                    if (isUserActive(username)) {
+                        // Buscar usuario para obtener datos completos
+                        Optional<Usuario> usuarioOpt = usuarioRepository.findByUsername(username);
+                        
+                        if (usuarioOpt.isPresent()) {
+                            Usuario usuario = usuarioOpt.get();
+                            
+                            // Actualizar último acceso
+                            usuario.setUltimoAcceso(LocalDateTime.now());
+                            usuarioRepository.save(usuario);
+                            
+                            // Generar nuevo JWT token
+                            String newToken = jwtService.generateToken(
+                                usuario.getUsername(),
+                                usuario.getNombre(),
+                                usuario.getApellido(),
+                                usuario.getRol()
+                            );
+                            
+                            return new AuthResponseDTO(
+                                newToken,
+                                usuario.getUsername(),
+                                usuario.getNombre(),
+                                usuario.getApellido(),
+                                usuario.getRol(),
+                                "Sesión extendida exitosamente",
+                                true
+                            );
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Token inválido o expirado
+            }
+        }
+        
+        return new AuthResponseDTO(
+            null, null, null, null, null,
+            "No se pudo extender la sesión",
+            false
+        );
     }
 }

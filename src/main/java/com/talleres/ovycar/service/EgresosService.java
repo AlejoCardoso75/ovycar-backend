@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.temporal.WeekFields;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -82,7 +84,7 @@ public class EgresosService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal promedioSemanal = resumenesSemanales.isEmpty() ? BigDecimal.ZERO : 
-                                   totalGeneral.divide(BigDecimal.valueOf(resumenesSemanales.size()), 2, BigDecimal.ROUND_HALF_UP);
+                                   totalGeneral.divide(BigDecimal.valueOf(resumenesSemanales.size()), 2, RoundingMode.HALF_UP);
 
         // Calcular crecimiento promedio
         BigDecimal crecimientoPromedio = calcularCrecimientoPromedio(resumenesSemanales);
@@ -132,7 +134,7 @@ public class EgresosService {
 
         int cantidadEgresos = egresos.size();
         BigDecimal promedioPorEgreso = cantidadEgresos > 0 ? 
-                                      totalEgresos.divide(BigDecimal.valueOf(cantidadEgresos), 2, BigDecimal.ROUND_HALF_UP) : 
+                                      totalEgresos.divide(BigDecimal.valueOf(cantidadEgresos), 2, RoundingMode.HALF_UP) : 
                                       BigDecimal.ZERO;
 
         // Calcular crecimiento vs semana anterior
@@ -169,39 +171,10 @@ public class EgresosService {
         
         LocalDate fecha = egreso.getFechaEgreso().toLocalDate();
         
-        // Calcular la semana usando el calendario colombiano (domingo a domingo)
-        // Encontrar el domingo más cercano hacia atrás
-        LocalDate domingoSemana = fecha;
-        while (domingoSemana.getDayOfWeek().getValue() != 7) { // 7 = domingo
-            domingoSemana = domingoSemana.minusDays(1);
-        }
-        
-        // Si el domingo encontrado es del año anterior, ajustar
-        int year = domingoSemana.getYear();
-        if (domingoSemana.getYear() < fecha.getYear()) {
-            year = fecha.getYear();
-        }
-        
-        // Calcular el número de semana
-        LocalDate firstDayOfYear = LocalDate.of(year, 1, 1);
-        LocalDate firstSunday = firstDayOfYear;
-        while (firstSunday.getDayOfWeek().getValue() != 7) {
-            firstSunday = firstSunday.plusDays(1);
-        }
-        
-        // Si la fecha es anterior al primer domingo del año, usar el año anterior
-        if (fecha.isBefore(firstSunday)) {
-            year = year - 1;
-            firstDayOfYear = LocalDate.of(year, 1, 1);
-            firstSunday = firstDayOfYear;
-            while (firstSunday.getDayOfWeek().getValue() != 7) {
-                firstSunday = firstSunday.plusDays(1);
-            }
-        }
-        
-        // Calcular la diferencia en días desde el primer domingo
-        long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(firstSunday, domingoSemana);
-        int week = (int) (daysDiff / 7) + 1;
+        // Usar WeekFields.ISO para calcular la semana con lunes como primer día
+        WeekFields weekFields = WeekFields.ISO;
+        int year = fecha.get(weekFields.weekBasedYear());
+        int week = fecha.get(weekFields.weekOfWeekBasedYear());
         
         return String.format("%d-%02d", year, week);
     }
@@ -212,35 +185,31 @@ public class EgresosService {
             int year = Integer.parseInt(parts[0]);
             int week = Integer.parseInt(parts[1]);
             
-            // Encontrar el primer domingo del año
+            // Usar WeekFields.ISO para calcular las fechas de la semana
+            WeekFields weekFields = WeekFields.ISO;
+            
+            // Encontrar el primer lunes del año
             LocalDate firstDayOfYear = LocalDate.of(year, 1, 1);
-            LocalDate firstSunday = firstDayOfYear;
-            while (firstSunday.getDayOfWeek().getValue() != 7) { // 7 = domingo
-                firstSunday = firstSunday.plusDays(1);
+            LocalDate firstMonday = firstDayOfYear;
+            while (firstMonday.getDayOfWeek().getValue() != 1) {
+                firstMonday = firstMonday.plusDays(1);
             }
             
-            // Calcular el domingo de inicio de la semana especificada
-            LocalDate startOfWeek = firstSunday.plusWeeks(week - 1);
-            // El fin de la semana es el domingo siguiente (para mostrar domingo a domingo)
-            LocalDate endOfWeek = startOfWeek.plusDays(7);
+            // Calcular el lunes de la semana especificada
+            LocalDate startOfWeek = firstMonday.plusWeeks(week - 1);
+            
+            // El fin de la semana es el domingo (6 días después del lunes)
+            LocalDate endOfWeek = startOfWeek.plusDays(6);
             
             return new LocalDate[]{startOfWeek, endOfWeek};
         } catch (Exception e) {
-            // En caso de error, retornar la semana actual (domingo a domingo)
+            // En caso de error, retornar la semana actual
             LocalDate now = LocalDate.now();
-            LocalDate firstDayOfYear = LocalDate.of(now.getYear(), 1, 1);
-            LocalDate firstSunday = firstDayOfYear;
-            while (firstSunday.getDayOfWeek().getValue() != 7) {
-                firstSunday = firstSunday.plusDays(1);
-            }
+            WeekFields weekFields = WeekFields.ISO;
+            int currentYear = now.get(weekFields.weekBasedYear());
+            int currentWeek = now.get(weekFields.weekOfWeekBasedYear());
             
-            long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(firstSunday, now);
-            int currentWeek = (int) (daysDiff / 7) + 1;
-            
-            LocalDate startOfWeek = firstSunday.plusWeeks(currentWeek - 1);
-            LocalDate endOfWeek = startOfWeek.plusDays(7);
-            
-            return new LocalDate[]{startOfWeek, endOfWeek};
+            return getFechasSemana(String.format("%d-%02d", currentYear, currentWeek));
         }
     }
 
@@ -258,15 +227,10 @@ public class EgresosService {
             // Si la semana anterior es 0, ir al año anterior
             if (weekAnterior <= 0) {
                 yearAnterior = year - 1;
-                // Calcular cuántas semanas tiene el año anterior
+                // Calcular cuántas semanas tiene el año anterior usando WeekFields.ISO
                 LocalDate lastDayOfPreviousYear = LocalDate.of(yearAnterior, 12, 31);
-                LocalDate firstDayOfPreviousYear = LocalDate.of(yearAnterior, 1, 1);
-                LocalDate firstSundayOfPreviousYear = firstDayOfPreviousYear;
-                while (firstSundayOfPreviousYear.getDayOfWeek().getValue() != 7) {
-                    firstSundayOfPreviousYear = firstSundayOfPreviousYear.plusDays(1);
-                }
-                long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(firstSundayOfPreviousYear, lastDayOfPreviousYear);
-                weekAnterior = (int) (daysDiff / 7) + 1;
+                WeekFields weekFields = WeekFields.ISO;
+                weekAnterior = lastDayOfPreviousYear.get(weekFields.weekOfWeekBasedYear());
             }
             
             String semanaAnterior = String.format("%d-%02d", yearAnterior, weekAnterior);
@@ -278,7 +242,7 @@ public class EgresosService {
             if (totalAnterior.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
             
             return totalActual.subtract(totalAnterior)
-                    .divide(totalAnterior, 4, BigDecimal.ROUND_HALF_UP)
+                    .divide(totalAnterior, 4, RoundingMode.HALF_UP)
                     .multiply(BigDecimal.valueOf(100));
         } catch (Exception e) {
             return BigDecimal.ZERO;
@@ -292,6 +256,6 @@ public class EgresosService {
                 .map(ResumenEgresoSemanalDTO::getCrecimientoVsSemanaAnterior)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        return sumaCrecimientos.divide(BigDecimal.valueOf(resumenes.size() - 1), 2, BigDecimal.ROUND_HALF_UP);
+        return sumaCrecimientos.divide(BigDecimal.valueOf(resumenes.size() - 1), 2, RoundingMode.HALF_UP);
     }
 }

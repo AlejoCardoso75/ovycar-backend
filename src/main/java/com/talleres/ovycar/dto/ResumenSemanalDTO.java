@@ -11,6 +11,7 @@ public class ResumenSemanalDTO {
     private Integer cantidadMantenimientos;
     private Double promedioPorMantenimiento;
     private Double crecimientoVsSemanaAnterior;
+    private Double gananciasNetas;
     private List<IngresoMantenimientoDTO> mantenimientos;
 
     // Constructores
@@ -19,7 +20,7 @@ public class ResumenSemanalDTO {
     public ResumenSemanalDTO(String semana, LocalDate fechaInicio, LocalDate fechaFin, 
                             Double totalIngresos, Integer cantidadMantenimientos, 
                             Double promedioPorMantenimiento, Double crecimientoVsSemanaAnterior,
-                            List<IngresoMantenimientoDTO> mantenimientos) {
+                            Double gananciasNetas, List<IngresoMantenimientoDTO> mantenimientos) {
         this.semana = semana;
         this.fechaInicio = fechaInicio;
         this.fechaFin = fechaFin;
@@ -27,6 +28,7 @@ public class ResumenSemanalDTO {
         this.cantidadMantenimientos = cantidadMantenimientos;
         this.promedioPorMantenimiento = promedioPorMantenimiento;
         this.crecimientoVsSemanaAnterior = crecimientoVsSemanaAnterior;
+        this.gananciasNetas = gananciasNetas;
         this.mantenimientos = mantenimientos;
     }
 
@@ -93,5 +95,13 @@ public class ResumenSemanalDTO {
 
     public void setMantenimientos(List<IngresoMantenimientoDTO> mantenimientos) {
         this.mantenimientos = mantenimientos;
+    }
+
+    public Double getGananciasNetas() {
+        return gananciasNetas;
+    }
+
+    public void setGananciasNetas(Double gananciasNetas) {
+        this.gananciasNetas = gananciasNetas;
     }
 }

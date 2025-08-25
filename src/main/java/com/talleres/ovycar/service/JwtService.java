@@ -67,8 +67,23 @@ public class JwtService {
         return extractExpiration(token).before(new Date());
     }
     
+    public Boolean isTokenInactive(String token) {
+        try {
+            Date issuedAt = extractClaim(token, Claims::getIssuedAt);
+            long currentTime = System.currentTimeMillis();
+            long issuedTime = issuedAt.getTime();
+            long timeSinceIssued = currentTime - issuedTime;
+            
+            // Si han pasado más de 15 minutos desde la emisión, considerar inactivo
+            return timeSinceIssued > JwtConfig.INACTIVITY_TIMEOUT;
+        } catch (JwtException | IllegalArgumentException e) {
+            return true; // Si hay error, considerar inactivo por seguridad
+        }
+    }
+    
     public Boolean validateToken(String token) {
         try {
+            // Solo verificar que no haya expirado
             return !isTokenExpired(token);
         } catch (JwtException | IllegalArgumentException e) {
             return false;

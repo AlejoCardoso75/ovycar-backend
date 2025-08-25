@@ -17,7 +17,7 @@ public class ServicioService {
     private final ServicioRepository servicioRepository;
     
     public List<Servicio> findAll() {
-        return servicioRepository.findByActivoTrue();
+        return servicioRepository.findAll();
     }
     
     public Optional<Servicio> findById(Long id) {
@@ -41,10 +41,6 @@ public class ServicioService {
     }
     
     public void deleteById(Long id) {
-        Optional<Servicio> servicio = servicioRepository.findById(id);
-        if (servicio.isPresent()) {
-            servicio.get().setActivo(false);
-            servicioRepository.save(servicio.get());
-        }
+        servicioRepository.deleteById(id);
     }
 } 

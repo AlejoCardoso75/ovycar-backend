@@ -26,20 +26,20 @@ public class IngresosService {
         // Obtener todos los mantenimientos
         List<Mantenimiento> mantenimientos = mantenimientoRepository.findAll();
         
-        // Filtrar mantenimientos válidos (con fecha programada y costo)
+        // Filtrar mantenimientos válidos (con fecha de fin y costo)
         List<Mantenimiento> mantenimientosValidos = mantenimientos.stream()
-                .filter(m -> m.getFechaProgramada() != null && m.getCosto() != null)
+                .filter(m -> m.getFechaFin() != null && m.getCosto() != null)
                 .collect(Collectors.toList());
 
         if (mantenimientosValidos.isEmpty()) {
-            return new HistorialSemanasDTO(new ArrayList<>(), 0.0, 0.0, 0.0);
+            return new HistorialSemanasDTO(new ArrayList<>(), 0.0, 0.0, 0.0, 0.0);
         }
 
         // Debug: Imprimir información de cada mantenimiento
         System.out.println("=== DEBUG: MANTENIMIENTOS Y SUS SEMANAS ===");
         for (Mantenimiento m : mantenimientosValidos) {
             String semana = getSemanaFromDate(m);
-            LocalDate fecha = m.getFechaProgramada().toLocalDate();
+            LocalDate fecha = m.getFechaFin().toLocalDate();
             
             // Calcular el rango de la semana para mostrar
             LocalDate[] fechasSemana = getFechasSemana(semana);
@@ -47,14 +47,14 @@ public class IngresosService {
             LocalDate finSemana = fechasSemana[1];
             
             System.out.println("Mantenimiento ID: " + m.getId() + 
-                             ", Fecha Programada: " + m.getFechaProgramada() + 
+                             ", Fecha Fin: " + m.getFechaFin() + 
                              ", Semana calculada: " + semana +
                              ", Rango semana: " + inicioSemana + " a " + finSemana +
                              ", Día de la semana: " + fecha.getDayOfWeek());
         }
         System.out.println("==========================================");
 
-        // Agrupar por semana usando fecha_programada
+        // Agrupar por semana usando fecha_fin
         Map<String, List<Mantenimiento>> mantenimientosPorSemana = mantenimientosValidos.stream()
                 .collect(Collectors.groupingBy(this::getSemanaFromDate));
 
@@ -89,13 +89,18 @@ public class IngresosService {
         // Calcular crecimiento promedio
         double crecimientoPromedio = calcularCrecimientoPromedio(resumenesSemanales);
 
-        return new HistorialSemanasDTO(resumenesSemanales, totalGeneral, promedioSemanal, crecimientoPromedio);
+        // Calcular total de ganancias netas
+        double totalGananciasNetas = resumenesSemanales.stream()
+                .mapToDouble(ResumenSemanalDTO::getGananciasNetas)
+                .sum();
+
+        return new HistorialSemanasDTO(resumenesSemanales, totalGeneral, promedioSemanal, crecimientoPromedio, totalGananciasNetas);
     }
 
     public ResumenSemanalDTO getResumenSemana(String semana) {
         // Obtener mantenimientos de la semana específica
         List<Mantenimiento> mantenimientos = mantenimientoRepository.findAll().stream()
-                .filter(m -> m.getFechaProgramada() != null && m.getCosto() != null)
+                .filter(m -> m.getFechaFin() != null && m.getCosto() != null)
                 .filter(m -> getSemanaFromDate(m).equals(semana))
                 .collect(Collectors.toList());
 
@@ -105,9 +110,9 @@ public class IngresosService {
     public List<IngresoMantenimientoDTO> getIngresosPorFecha(LocalDate fechaInicio, LocalDate fechaFin) {
         // Obtener mantenimientos en el rango de fechas
         List<Mantenimiento> mantenimientos = mantenimientoRepository.findAll().stream()
-                .filter(m -> m.getFechaProgramada() != null && m.getCosto() != null)
+                .filter(m -> m.getFechaFin() != null && m.getCosto() != null)
                 .filter(m -> {
-                    LocalDate fechaMantenimiento = m.getFechaProgramada().toLocalDate();
+                    LocalDate fechaMantenimiento = m.getFechaFin().toLocalDate();
                     return !fechaMantenimiento.isBefore(fechaInicio) && !fechaMantenimiento.isAfter(fechaFin);
                 })
                 .collect(Collectors.toList());
@@ -119,7 +124,7 @@ public class IngresosService {
 
     private ResumenSemanalDTO crearResumenSemanal(String semana, List<Mantenimiento> mantenimientos) {
         if (mantenimientos.isEmpty()) {
-            return new ResumenSemanalDTO(semana, null, null, 0.0, 0, 0.0, 0.0, new ArrayList<>());
+            return new ResumenSemanalDTO(semana, null, null, 0.0, 0, 0.0, 0.0, 0.0, new ArrayList<>());
         }
 
         // Calcular fechas de la semana
@@ -138,6 +143,9 @@ public class IngresosService {
         // Calcular crecimiento vs semana anterior
         double crecimientoVsSemanaAnterior = calcularCrecimientoVsSemanaAnterior(semana, totalIngresos);
 
+        // Calcular ganancias netas
+        double gananciasNetas = calcularGananciasNetas(mantenimientos);
+
         // Convertir mantenimientos a DTOs
         List<IngresoMantenimientoDTO> mantenimientosDTO = mantenimientos.stream()
                 .map(this::convertirAIngresoMantenimientoDTO)
@@ -145,7 +153,7 @@ public class IngresosService {
 
         return new ResumenSemanalDTO(semana, fechaInicio, fechaFin, totalIngresos, 
                                    cantidadMantenimientos, promedioPorMantenimiento, 
-                                   crecimientoVsSemanaAnterior, mantenimientosDTO);
+                                   crecimientoVsSemanaAnterior, gananciasNetas, mantenimientosDTO);
     }
 
     private IngresoMantenimientoDTO convertirAIngresoMantenimientoDTO(Mantenimiento mantenimiento) {
@@ -165,60 +173,59 @@ public class IngresosService {
         String estado = mantenimiento.getEstado() != null ? 
                        mantenimiento.getEstado().toString().toLowerCase() : "pendiente";
         
-        String semana = mantenimiento.getFechaProgramada() != null ? 
+        String semana = mantenimiento.getFechaFin() != null ? 
                        getSemanaFromDate(mantenimiento) : "";
+
+        // Calcular valores del desglose
+        Double valorRepuestos = mantenimiento.getValorRepuestos() != null ? mantenimiento.getValorRepuestos() : 0.0;
+        Double pagoRepuestos = valorRepuestos > 0 ? valorRepuestos * 0.8 : 0.0; // 80% de repuestos
+        Double porcentajeRepuestos = valorRepuestos > 0 ? valorRepuestos * 0.2 : 0.0; // 20% de repuestos
+        Double pagoManoObra = mantenimiento.getCostoManoObra() != null ? mantenimiento.getCostoManoObra() * 0.5 : 0.0; // 50% de mano de obra
+        Double gananciaManoObra = mantenimiento.getCostoManoObra() != null ? mantenimiento.getCostoManoObra() * 0.5 : 0.0; // 50% ganancia del taller
+        Double ingresoAdicional = mantenimiento.getCostoAdicionales() != null ? mantenimiento.getCostoAdicionales() : 0.0;
+        Double ingresoNeto = calcularIngresoNeto(mantenimiento);
+
+        // Debug: Imprimir valores para verificar
+        System.out.println("=== DEBUG: VALORES DEL MANTENIMIENTO ID " + mantenimiento.getId() + " ===");
+        System.out.println("Costo: " + mantenimiento.getCosto());
+        System.out.println("Costo Mano de Obra: " + mantenimiento.getCostoManoObra());
+        System.out.println("Pago Mano de Obra (50%): " + pagoManoObra);
+        System.out.println("Ganancia Mano de Obra (50%): " + gananciaManoObra);
+        System.out.println("Valor Repuestos: " + mantenimiento.getValorRepuestos());
+        System.out.println("Pago Repuestos (80%): " + pagoRepuestos);
+        System.out.println("20% Repuestos: " + porcentajeRepuestos);
+        System.out.println("Ingreso Adicional: " + ingresoAdicional);
+        System.out.println("Ingreso Neto Calculado: " + ingresoNeto);
+        System.out.println("================================================");
 
         return new IngresoMantenimientoDTO(
             mantenimiento.getId(),
-            mantenimiento.getFechaProgramada().toLocalDate(),
+            mantenimiento.getFechaFin().toLocalDate(),
             concepto,
             mantenimiento.getCosto(),
             cliente,
             vehiculo,
             mecanico,
             estado,
-            semana
+            semana,
+            pagoManoObra,
+            pagoRepuestos,
+            porcentajeRepuestos,
+            ingresoNeto,
+            ingresoAdicional,
+            gananciaManoObra
         );
     }
 
     private String getSemanaFromDate(Mantenimiento mantenimiento) {
-        if (mantenimiento.getFechaProgramada() == null) return "";
+        if (mantenimiento.getFechaFin() == null) return "";
         
-        LocalDate fecha = mantenimiento.getFechaProgramada().toLocalDate();
+        LocalDate fecha = mantenimiento.getFechaFin().toLocalDate();
         
-        // Calcular la semana usando el calendario colombiano (domingo a domingo)
-        // Encontrar el domingo más cercano hacia atrás
-        LocalDate domingoSemana = fecha;
-        while (domingoSemana.getDayOfWeek().getValue() != 7) { // 7 = domingo
-            domingoSemana = domingoSemana.minusDays(1);
-        }
-        
-        // Si el domingo encontrado es del año anterior, ajustar
-        int year = domingoSemana.getYear();
-        if (domingoSemana.getYear() < fecha.getYear()) {
-            year = fecha.getYear();
-        }
-        
-        // Calcular el número de semana
-        LocalDate firstDayOfYear = LocalDate.of(year, 1, 1);
-        LocalDate firstSunday = firstDayOfYear;
-        while (firstSunday.getDayOfWeek().getValue() != 7) {
-            firstSunday = firstSunday.plusDays(1);
-        }
-        
-        // Si la fecha es anterior al primer domingo del año, usar el año anterior
-        if (fecha.isBefore(firstSunday)) {
-            year = year - 1;
-            firstDayOfYear = LocalDate.of(year, 1, 1);
-            firstSunday = firstDayOfYear;
-            while (firstSunday.getDayOfWeek().getValue() != 7) {
-                firstSunday = firstSunday.plusDays(1);
-            }
-        }
-        
-        // Calcular la diferencia en días desde el primer domingo
-        long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(firstSunday, domingoSemana);
-        int week = (int) (daysDiff / 7) + 1;
+        // Usar WeekFields.ISO para calcular la semana con lunes como primer día
+        WeekFields weekFields = WeekFields.ISO;
+        int year = fecha.get(weekFields.weekBasedYear());
+        int week = fecha.get(weekFields.weekOfWeekBasedYear());
         
         return String.format("%d-%02d", year, week);
     }
@@ -229,35 +236,31 @@ public class IngresosService {
             int year = Integer.parseInt(parts[0]);
             int week = Integer.parseInt(parts[1]);
             
-            // Encontrar el primer domingo del año
+            // Usar WeekFields.ISO para calcular las fechas de la semana
+            WeekFields weekFields = WeekFields.ISO;
+            
+            // Encontrar el primer lunes del año
             LocalDate firstDayOfYear = LocalDate.of(year, 1, 1);
-            LocalDate firstSunday = firstDayOfYear;
-            while (firstSunday.getDayOfWeek().getValue() != 7) { // 7 = domingo
-                firstSunday = firstSunday.plusDays(1);
+            LocalDate firstMonday = firstDayOfYear;
+            while (firstMonday.getDayOfWeek().getValue() != 1) {
+                firstMonday = firstMonday.plusDays(1);
             }
             
-            // Calcular el domingo de inicio de la semana especificada
-            LocalDate startOfWeek = firstSunday.plusWeeks(week - 1);
-            // El fin de la semana es el domingo siguiente (para mostrar domingo a domingo)
-            LocalDate endOfWeek = startOfWeek.plusDays(7);
+            // Calcular el lunes de la semana especificada
+            LocalDate startOfWeek = firstMonday.plusWeeks(week - 1);
+            
+            // El fin de la semana es el domingo (6 días después del lunes)
+            LocalDate endOfWeek = startOfWeek.plusDays(6);
             
             return new LocalDate[]{startOfWeek, endOfWeek};
         } catch (Exception e) {
-            // En caso de error, retornar la semana actual (domingo a domingo)
+            // En caso de error, retornar la semana actual
             LocalDate now = LocalDate.now();
-            LocalDate firstDayOfYear = LocalDate.of(now.getYear(), 1, 1);
-            LocalDate firstSunday = firstDayOfYear;
-            while (firstSunday.getDayOfWeek().getValue() != 7) {
-                firstSunday = firstSunday.plusDays(1);
-            }
+            WeekFields weekFields = WeekFields.ISO;
+            int currentYear = now.get(weekFields.weekBasedYear());
+            int currentWeek = now.get(weekFields.weekOfWeekBasedYear());
             
-            long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(firstSunday, now);
-            int currentWeek = (int) (daysDiff / 7) + 1;
-            
-            LocalDate startOfWeek = firstSunday.plusWeeks(currentWeek - 1);
-            LocalDate endOfWeek = startOfWeek.plusDays(7);
-            
-            return new LocalDate[]{startOfWeek, endOfWeek};
+            return getFechasSemana(String.format("%d-%02d", currentYear, currentWeek));
         }
     }
 
@@ -275,15 +278,10 @@ public class IngresosService {
             // Si la semana anterior es 0, ir al año anterior
             if (weekAnterior <= 0) {
                 yearAnterior = year - 1;
-                // Calcular cuántas semanas tiene el año anterior
+                // Calcular cuántas semanas tiene el año anterior usando WeekFields.ISO
                 LocalDate lastDayOfPreviousYear = LocalDate.of(yearAnterior, 12, 31);
-                LocalDate firstDayOfPreviousYear = LocalDate.of(yearAnterior, 1, 1);
-                LocalDate firstSundayOfPreviousYear = firstDayOfPreviousYear;
-                while (firstSundayOfPreviousYear.getDayOfWeek().getValue() != 7) {
-                    firstSundayOfPreviousYear = firstSundayOfPreviousYear.plusDays(1);
-                }
-                long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(firstSundayOfPreviousYear, lastDayOfPreviousYear);
-                weekAnterior = (int) (daysDiff / 7) + 1;
+                WeekFields weekFields = WeekFields.ISO;
+                weekAnterior = lastDayOfPreviousYear.get(weekFields.weekOfWeekBasedYear());
             }
             
             String semanaAnterior = String.format("%d-%02d", yearAnterior, weekAnterior);
@@ -308,5 +306,49 @@ public class IngresosService {
                 .sum();
         
         return sumaCrecimientos / (resumenes.size() - 1); // -1 porque el primer elemento no tiene semana anterior
+    }
+
+    private double calcularGananciasNetas(List<Mantenimiento> mantenimientos) {
+        double gananciasNetas = 0.0;
+        
+        for (Mantenimiento mantenimiento : mantenimientos) {
+            // 50% de mano de obra
+            if (mantenimiento.getCostoManoObra() != null) {
+                gananciasNetas += mantenimiento.getCostoManoObra() * 0.5;
+            }
+            
+            // 20% de valor de repuestos (solo si hay valor de repuestos)
+            if (mantenimiento.getValorRepuestos() != null && mantenimiento.getValorRepuestos() > 0) {
+                gananciasNetas += mantenimiento.getValorRepuestos() * 0.2;
+            }
+            
+            // Ingresos adicionales (costos adicionales)
+            if (mantenimiento.getCostoAdicionales() != null) {
+                gananciasNetas += mantenimiento.getCostoAdicionales();
+            }
+        }
+        
+        return gananciasNetas;
+    }
+
+    private double calcularIngresoNeto(Mantenimiento mantenimiento) {
+        double ingresoNeto = 0.0;
+        
+        // 50% de mano de obra
+        if (mantenimiento.getCostoManoObra() != null) {
+            ingresoNeto += mantenimiento.getCostoManoObra() * 0.5;
+        }
+        
+        // 20% de valor de repuestos (solo si hay valor de repuestos)
+        if (mantenimiento.getValorRepuestos() != null && mantenimiento.getValorRepuestos() > 0) {
+            ingresoNeto += mantenimiento.getValorRepuestos() * 0.2;
+        }
+        
+        // Ingresos adicionales (costos adicionales)
+        if (mantenimiento.getCostoAdicionales() != null) {
+            ingresoNeto += mantenimiento.getCostoAdicionales();
+        }
+        
+        return ingresoNeto;
     }
 }

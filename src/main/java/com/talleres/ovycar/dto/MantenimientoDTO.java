@@ -27,6 +27,11 @@ public class MantenimientoDTO {
     private Integer kilometrajeProximo;
     private String observaciones;
     private Double costo;
+    private Double costoManoObra;
+    private Double valorRepuestos;
+    private Double costoAdicionales;
+    private String proveedorRepuestos;
+    private String garantia;
     private String mecanico;
     private LocalDateTime fechaRegistro;
     private List<DetalleMantenimientoDTO> detalles;

@@ -57,6 +57,21 @@ public class Mantenimiento {
     @Column(name = "costo")
     private Double costo;
     
+    @Column(name = "costo_mano_obra")
+    private Double costoManoObra;
+    
+    @Column(name = "valor_repuestos")
+    private Double valorRepuestos;
+    
+    @Column(name = "costo_adicionales")
+    private Double costoAdicionales;
+    
+    @Column(name = "proveedor_repuestos", length = 50)
+    private String proveedorRepuestos;
+    
+    @Column(name = "garantia", length = 100)
+    private String garantia;
+    
     @Column(name = "mecanico", length = 100)
     private String mecanico;
     

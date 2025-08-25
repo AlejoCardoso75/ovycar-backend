@@ -22,7 +22,7 @@ public class VehiculoService {
     private final ClienteRepository clienteRepository;
     
     public List<VehiculoDTO> findAll() {
-        return vehiculoRepository.findByActivoTrue()
+        return vehiculoRepository.findAll()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -30,20 +30,17 @@ public class VehiculoService {
     
     public Optional<VehiculoDTO> findById(Long id) {
         return vehiculoRepository.findById(id)
-                .filter(vehiculo -> vehiculo.getActivo()) // Solo vehículos activos
                 .map(this::convertToDTO);
     }
     
     public Optional<VehiculoDTO> findByPlaca(String placa) {
         return vehiculoRepository.findByPlaca(placa)
-                .filter(vehiculo -> vehiculo.getActivo()) // Solo vehículos activos
                 .map(this::convertToDTO);
     }
     
     public List<VehiculoDTO> findByClienteId(Long clienteId) {
         return vehiculoRepository.findByClienteId(clienteId)
                 .stream()
-                .filter(vehiculo -> vehiculo.getActivo()) // Solo vehículos activos
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -51,7 +48,6 @@ public class VehiculoService {
     public List<VehiculoDTO> findByPlacaContaining(String placa) {
         return vehiculoRepository.findByPlacaContaining(placa)
                 .stream()
-                .filter(vehiculo -> vehiculo.getActivo()) // Solo vehículos activos
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -59,7 +55,6 @@ public class VehiculoService {
     public List<VehiculoDTO> findByMarcaContaining(String marca) {
         return vehiculoRepository.findByMarcaContaining(marca)
                 .stream()
-                .filter(vehiculo -> vehiculo.getActivo()) // Solo vehículos activos
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -124,11 +119,7 @@ public class VehiculoService {
     }
     
     public void deleteById(Long id) {
-        Optional<Vehiculo> vehiculo = vehiculoRepository.findById(id);
-        if (vehiculo.isPresent()) {
-            vehiculo.get().setActivo(false);
-            vehiculoRepository.save(vehiculo.get());
-        }
+        vehiculoRepository.deleteById(id);
     }
     
     private VehiculoDTO convertToDTO(Vehiculo vehiculo) {

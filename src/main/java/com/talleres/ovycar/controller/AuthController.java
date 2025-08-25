@@ -35,4 +35,13 @@ public class AuthController {
         AuthResponseDTO response = authService.validateToken(token);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/extend")
+    public ResponseEntity<AuthResponseDTO> extendSession(@RequestHeader("Authorization") String token) {
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        AuthResponseDTO response = authService.extendSession(token);
+        return ResponseEntity.ok(response);
+    }
 }

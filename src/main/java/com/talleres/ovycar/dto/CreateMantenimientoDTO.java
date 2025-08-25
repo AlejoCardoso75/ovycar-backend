@@ -18,5 +18,10 @@ public class CreateMantenimientoDTO {
     private Integer kilometrajeActual;
     private String observaciones;
     private Double costo;
+    private Double costoManoObra;
+    private Double valorRepuestos;
+    private Double costoAdicionales;
+    private String proveedorRepuestos;
+    private String garantia;
     private String mecanico;
 }

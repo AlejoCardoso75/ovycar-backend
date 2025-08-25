@@ -7,16 +7,18 @@ public class HistorialSemanasDTO {
     private Double totalGeneral;
     private Double promedioSemanal;
     private Double crecimientoPromedio;
+    private Double totalGananciasNetas;
 
     // Constructores
     public HistorialSemanasDTO() {}
 
     public HistorialSemanasDTO(List<ResumenSemanalDTO> semanas, Double totalGeneral, 
-                              Double promedioSemanal, Double crecimientoPromedio) {
+                              Double promedioSemanal, Double crecimientoPromedio, Double totalGananciasNetas) {
         this.semanas = semanas;
         this.totalGeneral = totalGeneral;
         this.promedioSemanal = promedioSemanal;
         this.crecimientoPromedio = crecimientoPromedio;
+        this.totalGananciasNetas = totalGananciasNetas;
     }
 
     // Getters y Setters
@@ -50,5 +52,13 @@ public class HistorialSemanasDTO {
 
     public void setCrecimientoPromedio(Double crecimientoPromedio) {
         this.crecimientoPromedio = crecimientoPromedio;
+    }
+
+    public Double getTotalGananciasNetas() {
+        return totalGananciasNetas;
+    }
+
+    public void setTotalGananciasNetas(Double totalGananciasNetas) {
+        this.totalGananciasNetas = totalGananciasNetas;
     }
 }

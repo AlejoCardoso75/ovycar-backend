@@ -18,7 +18,7 @@ public class ProductoService {
     private final ProductoRepository productoRepository;
     
     public List<ProductoDTO> findAll() {
-        return productoRepository.findByActivoTrue()
+        return productoRepository.findAll()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -77,11 +77,7 @@ public class ProductoService {
     }
     
     public void deleteById(Long id) {
-        Optional<Producto> producto = productoRepository.findById(id);
-        if (producto.isPresent()) {
-            producto.get().setActivo(false);
-            productoRepository.save(producto.get());
-        }
+        productoRepository.deleteById(id);
     }
     
     public void actualizarStock(Long id, Integer cantidad) {
