@@ -7,11 +7,11 @@ import com.talleres.ovycar.entity.Mantenimiento;
 import com.talleres.ovycar.entity.Egreso;
 import com.talleres.ovycar.repository.MantenimientoRepository;
 import com.talleres.ovycar.repository.EgresoRepository;
+import com.talleres.ovycar.util.SemanaUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.temporal.WeekFields;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,7 +39,7 @@ public class GananciaSocioService {
 
         // Agrupar por semana usando fecha_fin
         Map<String, List<Mantenimiento>> mantenimientosPorSemana = mantenimientosValidos.stream()
-                .collect(Collectors.groupingBy(this::getSemanaFromDate));
+                .collect(Collectors.groupingBy(m -> SemanaUtil.getSemanaFromDate(m.getFechaFin().toLocalDate())));
 
         // Crear resúmenes semanales
         List<ResumenSemanalSocioDTO> resumenesSemanales = new ArrayList<>();
@@ -77,7 +77,7 @@ public class GananciaSocioService {
         // Obtener mantenimientos de la semana específica
         List<Mantenimiento> mantenimientos = mantenimientoRepository.findAll().stream()
                 .filter(m -> m.getFechaFin() != null && m.getCosto() != null)
-                .filter(m -> getSemanaFromDate(m).equals(semana))
+                .filter(m -> SemanaUtil.getSemanaFromDate(m.getFechaFin().toLocalDate()).equals(semana))
                 .collect(Collectors.toList());
 
         return crearResumenSemanal(semana, mantenimientos);
@@ -106,7 +106,7 @@ public class GananciaSocioService {
         }
 
         // Calcular fechas de la semana
-        LocalDate[] fechas = getFechasSemana(semana);
+        LocalDate[] fechas = SemanaUtil.getFechasSemana(semana);
         LocalDate fechaInicio = fechas[0];
         LocalDate fechaFin = fechas[1];
 
@@ -149,8 +149,8 @@ public class GananciaSocioService {
         String estado = mantenimiento.getEstado() != null ? 
                        mantenimiento.getEstado().toString().toLowerCase() : "pendiente";
         
-        String semana = mantenimiento.getFechaFin() != null ? 
-                       getSemanaFromDate(mantenimiento) : "";
+                String semana = mantenimiento.getFechaFin() != null ? 
+                        SemanaUtil.getSemanaFromDate(mantenimiento.getFechaFin().toLocalDate()) : "";
 
         Double ingresoNeto = calcularIngresoNeto(mantenimiento);
 
@@ -210,50 +210,5 @@ public class GananciaSocioService {
                 .sum();
     }
 
-    private String getSemanaFromDate(Mantenimiento mantenimiento) {
-        if (mantenimiento.getFechaFin() == null) return "";
-        
-        LocalDate fecha = mantenimiento.getFechaFin().toLocalDate();
-        
-        // Usar WeekFields.ISO para calcular la semana con lunes como primer día
-        WeekFields weekFields = WeekFields.ISO;
-        int year = fecha.get(weekFields.weekBasedYear());
-        int week = fecha.get(weekFields.weekOfWeekBasedYear());
-        
-        return String.format("%d-%02d", year, week);
-    }
 
-    private LocalDate[] getFechasSemana(String semana) {
-        try {
-            String[] parts = semana.split("-");
-            int year = Integer.parseInt(parts[0]);
-            int week = Integer.parseInt(parts[1]);
-            
-            // Usar WeekFields.ISO para calcular las fechas de la semana
-            WeekFields weekFields = WeekFields.ISO;
-            
-            // Encontrar el primer lunes del año
-            LocalDate firstDayOfYear = LocalDate.of(year, 1, 1);
-            LocalDate firstMonday = firstDayOfYear;
-            while (firstMonday.getDayOfWeek().getValue() != 1) {
-                firstMonday = firstMonday.plusDays(1);
-            }
-            
-            // Calcular el lunes de la semana especificada
-            LocalDate startOfWeek = firstMonday.plusWeeks(week - 1);
-            
-            // El fin de la semana es el domingo (6 días después del lunes)
-            LocalDate endOfWeek = startOfWeek.plusDays(6);
-            
-            return new LocalDate[]{startOfWeek, endOfWeek};
-        } catch (Exception e) {
-            // En caso de error, retornar la semana actual
-            LocalDate now = LocalDate.now();
-            WeekFields weekFields = WeekFields.ISO;
-            int currentYear = now.get(weekFields.weekBasedYear());
-            int currentWeek = now.get(weekFields.weekOfWeekBasedYear());
-            
-            return getFechasSemana(String.format("%d-%02d", currentYear, currentWeek));
-        }
-    }
 }

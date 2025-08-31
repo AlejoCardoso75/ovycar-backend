@@ -5,13 +5,13 @@ import com.talleres.ovycar.dto.ResumenEgresoSemanalDTO;
 import com.talleres.ovycar.dto.HistorialEgresosSemanasDTO;
 import com.talleres.ovycar.entity.Egreso;
 import com.talleres.ovycar.repository.EgresoRepository;
+import com.talleres.ovycar.util.SemanaUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.temporal.WeekFields;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -37,11 +37,11 @@ public class EgresosService {
         // Debug: Imprimir información de cada egreso
         System.out.println("=== DEBUG: EGRESOS Y SUS SEMANAS ===");
         for (Egreso e : egresosValidos) {
-            String semana = getSemanaFromDate(e);
+            String semana = SemanaUtil.getSemanaFromDate(e.getFechaEgreso().toLocalDate());
             LocalDate fecha = e.getFechaEgreso().toLocalDate();
             
             // Calcular el rango de la semana para mostrar
-            LocalDate[] fechasSemana = getFechasSemana(semana);
+            LocalDate[] fechasSemana = SemanaUtil.getFechasSemana(semana);
             LocalDate inicioSemana = fechasSemana[0];
             LocalDate finSemana = fechasSemana[1];
             
@@ -55,7 +55,7 @@ public class EgresosService {
 
         // Agrupar por semana usando fecha_egreso
         Map<String, List<Egreso>> egresosPorSemana = egresosValidos.stream()
-                .collect(Collectors.groupingBy(this::getSemanaFromDate));
+                .collect(Collectors.groupingBy(e -> SemanaUtil.getSemanaFromDate(e.getFechaEgreso().toLocalDate())));
 
         // Debug: Imprimir agrupación por semana
         System.out.println("=== DEBUG: AGRUPACIÓN POR SEMANA ===");
@@ -96,7 +96,7 @@ public class EgresosService {
         // Obtener egresos de la semana específica
         List<Egreso> egresos = egresoRepository.findAll().stream()
                 .filter(e -> e.getFechaEgreso() != null && e.getMonto() != null)
-                .filter(e -> getSemanaFromDate(e).equals(semana))
+                .filter(e -> SemanaUtil.getSemanaFromDate(e.getFechaEgreso().toLocalDate()).equals(semana))
                 .collect(Collectors.toList());
 
         return crearResumenSemanal(semana, egresos);
@@ -123,7 +123,7 @@ public class EgresosService {
         }
 
         // Calcular fechas de la semana
-        LocalDate[] fechas = getFechasSemana(semana);
+        LocalDate[] fechas = SemanaUtil.getFechasSemana(semana);
         LocalDate fechaInicio = fechas[0];
         LocalDate fechaFin = fechas[1];
 
@@ -153,7 +153,7 @@ public class EgresosService {
     private EgresoSemanalDTO convertirAEgresoSemanalDTO(Egreso egreso) {
         String categoria = egreso.getCategoria() != null ? egreso.getCategoria() : "Sin categoría";
         String responsable = egreso.getResponsable() != null ? egreso.getResponsable() : "No especificado";
-        String semana = egreso.getFechaEgreso() != null ? getSemanaFromDate(egreso) : "";
+        String semana = egreso.getFechaEgreso() != null ? SemanaUtil.getSemanaFromDate(egreso.getFechaEgreso().toLocalDate()) : "";
 
         return new EgresoSemanalDTO(
             egreso.getId(),
@@ -164,53 +164,6 @@ public class EgresosService {
             responsable,
             semana
         );
-    }
-
-    private String getSemanaFromDate(Egreso egreso) {
-        if (egreso.getFechaEgreso() == null) return "";
-        
-        LocalDate fecha = egreso.getFechaEgreso().toLocalDate();
-        
-        // Usar WeekFields.ISO para calcular la semana con lunes como primer día
-        WeekFields weekFields = WeekFields.ISO;
-        int year = fecha.get(weekFields.weekBasedYear());
-        int week = fecha.get(weekFields.weekOfWeekBasedYear());
-        
-        return String.format("%d-%02d", year, week);
-    }
-
-    private LocalDate[] getFechasSemana(String semana) {
-        try {
-            String[] parts = semana.split("-");
-            int year = Integer.parseInt(parts[0]);
-            int week = Integer.parseInt(parts[1]);
-            
-            // Usar WeekFields.ISO para calcular las fechas de la semana
-            WeekFields weekFields = WeekFields.ISO;
-            
-            // Encontrar el primer lunes del año
-            LocalDate firstDayOfYear = LocalDate.of(year, 1, 1);
-            LocalDate firstMonday = firstDayOfYear;
-            while (firstMonday.getDayOfWeek().getValue() != 1) {
-                firstMonday = firstMonday.plusDays(1);
-            }
-            
-            // Calcular el lunes de la semana especificada
-            LocalDate startOfWeek = firstMonday.plusWeeks(week - 1);
-            
-            // El fin de la semana es el domingo (6 días después del lunes)
-            LocalDate endOfWeek = startOfWeek.plusDays(6);
-            
-            return new LocalDate[]{startOfWeek, endOfWeek};
-        } catch (Exception e) {
-            // En caso de error, retornar la semana actual
-            LocalDate now = LocalDate.now();
-            WeekFields weekFields = WeekFields.ISO;
-            int currentYear = now.get(weekFields.weekBasedYear());
-            int currentWeek = now.get(weekFields.weekOfWeekBasedYear());
-            
-            return getFechasSemana(String.format("%d-%02d", currentYear, currentWeek));
-        }
     }
 
     private BigDecimal calcularCrecimientoVsSemanaAnterior(String semanaActual, BigDecimal totalActual) {
@@ -227,10 +180,8 @@ public class EgresosService {
             // Si la semana anterior es 0, ir al año anterior
             if (weekAnterior <= 0) {
                 yearAnterior = year - 1;
-                // Calcular cuántas semanas tiene el año anterior usando WeekFields.ISO
-                LocalDate lastDayOfPreviousYear = LocalDate.of(yearAnterior, 12, 31);
-                WeekFields weekFields = WeekFields.ISO;
-                weekAnterior = lastDayOfPreviousYear.get(weekFields.weekOfWeekBasedYear());
+                // Calcular cuántas semanas tiene el año anterior (52 semanas)
+                weekAnterior = 52;
             }
             
             String semanaAnterior = String.format("%d-%02d", yearAnterior, weekAnterior);
