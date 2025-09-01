@@ -31,7 +31,7 @@ public class MantenimientoService {
     private final FacturaRepository facturaRepository;
     
     public List<MantenimientoDTO> findAll() {
-        return mantenimientoRepository.findAll()
+        return mantenimientoRepository.findAllWithRelations()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -43,63 +43,63 @@ public class MantenimientoService {
     }
     
     public List<MantenimientoDTO> findByClienteId(Long clienteId) {
-        return mantenimientoRepository.findByClienteId(clienteId)
+        return mantenimientoRepository.findByClienteIdWithRelations(clienteId)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
     
     public List<MantenimientoDTO> findByVehiculoId(Long vehiculoId) {
-        return mantenimientoRepository.findByVehiculoId(vehiculoId)
+        return mantenimientoRepository.findByVehiculoIdWithRelations(vehiculoId)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
     
     public List<MantenimientoDTO> findByEstado(Mantenimiento.EstadoMantenimiento estado) {
-        return mantenimientoRepository.findByEstado(estado)
+        return mantenimientoRepository.findByEstadoWithRelations(estado)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
     
     public List<MantenimientoDTO> findMantenimientosProgramados() {
-        return mantenimientoRepository.findMantenimientosProgramados(LocalDateTime.now())
+        return mantenimientoRepository.findMantenimientosProgramadosWithRelations(LocalDateTime.now())
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
     
     public List<MantenimientoDTO> findMantenimientosEnProceso() {
-        return mantenimientoRepository.findMantenimientosEnProceso()
+        return mantenimientoRepository.findMantenimientosEnProcesoWithRelations()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
     
     public List<MantenimientoDTO> findMantenimientosCompletados() {
-        return mantenimientoRepository.findMantenimientosCompletados()
+        return mantenimientoRepository.findMantenimientosCompletadosWithRelations()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
     
     public List<MantenimientoDTO> buscarMantenimientos(String termino) {
-        return mantenimientoRepository.buscarMantenimientos(termino)
+        return mantenimientoRepository.buscarMantenimientosWithRelations(termino)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
     
     public List<MantenimientoDTO> findHistorialCliente(Long clienteId) {
-        return mantenimientoRepository.findHistorialCliente(clienteId)
+        return mantenimientoRepository.findHistorialClienteWithRelations(clienteId)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
     
     public List<MantenimientoDTO> findHistorialVehiculo(Long vehiculoId) {
-        return mantenimientoRepository.findHistorialVehiculo(vehiculoId)
+        return mantenimientoRepository.findHistorialVehiculoWithRelations(vehiculoId)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
