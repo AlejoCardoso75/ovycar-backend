@@ -12,6 +12,8 @@ import com.talleres.ovycar.repository.ClienteRepository;
 import com.talleres.ovycar.repository.VehiculoRepository;
 import com.talleres.ovycar.repository.FacturaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -30,8 +32,9 @@ public class MantenimientoService {
     private final VehiculoRepository vehiculoRepository;
     private final FacturaRepository facturaRepository;
     
+    @Cacheable(value = "mantenimientos", key = "'all'")
     public List<MantenimientoDTO> findAll() {
-        return mantenimientoRepository.findAllWithRelations()
+        return mantenimientoRepository.findAllWithBasicRelationsOnly()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -40,6 +43,17 @@ public class MantenimientoService {
     public Optional<MantenimientoDTO> findById(Long id) {
         return mantenimientoRepository.findById(id)
                 .map(this::convertToDTO);
+    }
+    
+    public Optional<MantenimientoDTO> findByIdWithDetails(Long id) {
+        return mantenimientoRepository.findById(id)
+                .map(mantenimiento -> {
+                    // Forzar la carga de detalles si es necesario
+                    if (mantenimiento.getDetalles() != null) {
+                        mantenimiento.getDetalles().size(); // Esto fuerza la carga lazy
+                    }
+                    return convertToDTO(mantenimiento);
+                });
     }
     
     public List<MantenimientoDTO> findByClienteId(Long clienteId) {
@@ -105,6 +119,7 @@ public class MantenimientoService {
                 .collect(Collectors.toList());
     }
     
+    @CacheEvict(value = "mantenimientos", allEntries = true)
     public MantenimientoDTO createMantenimiento(CreateMantenimientoDTO createMantenimientoDTO) {
         // Obtener el vehículo y el cliente
         Vehiculo vehiculo = vehiculoRepository.findById(createMantenimientoDTO.getVehiculoId())
@@ -133,6 +148,7 @@ public class MantenimientoService {
         return convertToDTO(mantenimientoRepository.save(mantenimiento));
     }
     
+    @CacheEvict(value = "mantenimientos", allEntries = true)
     public MantenimientoDTO save(Mantenimiento mantenimiento) {
         // Si es un mantenimiento nuevo, obtener el cliente del vehículo
         if (mantenimiento.getId() == null) {
@@ -171,6 +187,7 @@ public class MantenimientoService {
         return convertToDTO(mantenimientoRepository.save(mantenimiento));
     }
     
+    @CacheEvict(value = "mantenimientos", allEntries = true)
     public MantenimientoDTO iniciarMantenimiento(Long id) {
         Optional<Mantenimiento> mantenimiento = mantenimientoRepository.findById(id);
         if (mantenimiento.isPresent()) {
@@ -182,6 +199,7 @@ public class MantenimientoService {
         throw new RuntimeException("Mantenimiento no encontrado");
     }
     
+    @CacheEvict(value = "mantenimientos", allEntries = true)
     public MantenimientoDTO completarMantenimiento(Long id) {
         Optional<Mantenimiento> mantenimiento = mantenimientoRepository.findById(id);
         if (mantenimiento.isPresent()) {
@@ -193,6 +211,7 @@ public class MantenimientoService {
         throw new RuntimeException("Mantenimiento no encontrado");
     }
     
+    @CacheEvict(value = "mantenimientos", allEntries = true)
     public MantenimientoDTO cancelarMantenimiento(Long id) {
         Optional<Mantenimiento> mantenimiento = mantenimientoRepository.findById(id);
         if (mantenimiento.isPresent()) {
@@ -203,6 +222,7 @@ public class MantenimientoService {
         throw new RuntimeException("Mantenimiento no encontrado");
     }
     
+    @CacheEvict(value = "mantenimientos", allEntries = true)
     public void deleteById(Long id) {
         // Check if mantenimiento exists
         Mantenimiento mantenimiento = mantenimientoRepository.findById(id)
@@ -218,6 +238,7 @@ public class MantenimientoService {
         mantenimientoRepository.deleteById(id);
     }
     
+    @CacheEvict(value = "mantenimientos", allEntries = true)
     public void deleteByIdWithCascade(Long id) {
         // Check if mantenimiento exists
         Mantenimiento mantenimiento = mantenimientoRepository.findById(id)
@@ -301,7 +322,8 @@ public class MantenimientoService {
                 mantenimiento.getGarantia(),
                 mantenimiento.getMecanico(),
                 mantenimiento.getFechaRegistro(),
-                mantenimiento.getDetalles() != null ? 
+                // Solo cargar detalles si están disponibles (lazy loading)
+                mantenimiento.getDetalles() != null && !mantenimiento.getDetalles().isEmpty() ? 
                     mantenimiento.getDetalles().stream()
                         .map(this::convertDetalleToDTO)
                         .collect(Collectors.toList()) : null

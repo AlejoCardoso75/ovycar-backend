@@ -1,6 +1,8 @@
 package com.talleres.ovycar.repository;
 
 import com.talleres.ovycar.entity.Mantenimiento;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,7 +18,8 @@ public interface MantenimientoRepository extends JpaRepository<Mantenimiento, Lo
            "LEFT JOIN FETCH m.cliente " +
            "LEFT JOIN FETCH m.detalles d " +
            "LEFT JOIN FETCH d.servicio " +
-           "LEFT JOIN FETCH d.producto")
+           "LEFT JOIN FETCH d.producto " +
+           "ORDER BY m.fechaRegistro DESC")
     List<Mantenimiento> findAllWithRelations();
     
     @Query("SELECT DISTINCT m FROM Mantenimiento m " +
@@ -137,4 +140,18 @@ public interface MantenimientoRepository extends JpaRepository<Mantenimiento, Lo
            "LEFT JOIN FETCH d.producto " +
            "WHERE m.vehiculo.id = :vehiculoId AND m.estado = 'COMPLETADO'")
     List<Mantenimiento> findHistorialVehiculoWithRelations(@Param("vehiculoId") Long vehiculoId);
+    
+    // Método optimizado con paginación para evitar cargar todos los datos
+    @Query("SELECT DISTINCT m FROM Mantenimiento m " +
+           "LEFT JOIN FETCH m.vehiculo " +
+           "LEFT JOIN FETCH m.cliente " +
+           "ORDER BY m.fechaRegistro DESC")
+    Page<Mantenimiento> findAllWithBasicRelations(Pageable pageable);
+    
+    // Método para obtener solo los datos básicos sin detalles
+    @Query("SELECT m FROM Mantenimiento m " +
+           "LEFT JOIN FETCH m.vehiculo " +
+           "LEFT JOIN FETCH m.cliente " +
+           "ORDER BY m.fechaRegistro DESC")
+    List<Mantenimiento> findAllWithBasicRelationsOnly();
 } 

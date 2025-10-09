@@ -31,6 +31,13 @@ public class MantenimientoController {
                 .orElse(ResponseEntity.notFound().build());
     }
     
+    @GetMapping("/{id}/details")
+    public ResponseEntity<MantenimientoDTO> getMantenimientoByIdWithDetails(@PathVariable Long id) {
+        return mantenimientoService.findByIdWithDetails(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+    
     @GetMapping("/cliente/{clienteId}")
     public ResponseEntity<List<MantenimientoDTO>> getMantenimientosByCliente(@PathVariable Long clienteId) {
         return ResponseEntity.ok(mantenimientoService.findByClienteId(clienteId));
