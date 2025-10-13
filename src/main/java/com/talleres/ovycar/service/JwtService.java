@@ -3,6 +3,7 @@ package com.talleres.ovycar.service;
 import com.talleres.ovycar.config.JwtConfig;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -13,7 +14,14 @@ import java.util.Map;
 @Service
 public class JwtService {
     
-    private final SecretKey secretKey = Keys.hmacShaKeyFor(JwtConfig.SECRET_KEY.getBytes());
+    private final JwtConfig jwtConfig;
+    private final SecretKey secretKey;
+    
+    @Autowired
+    public JwtService(JwtConfig jwtConfig) {
+        this.jwtConfig = jwtConfig;
+        this.secretKey = Keys.hmacShaKeyFor(jwtConfig.SECRET_KEY.getBytes());
+    }
     
     public String generateToken(String username, String nombre, String apellido, String rol) {
         Map<String, Object> claims = new HashMap<>();
@@ -25,7 +33,7 @@ public class JwtService {
                 .setClaims(claims)
                 .setSubject(username)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + JwtConfig.EXPIRATION_TIME))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtConfig.EXPIRATION_TIME))
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -75,7 +83,7 @@ public class JwtService {
             long timeSinceIssued = currentTime - issuedTime;
             
             // Si han pasado más de 15 minutos desde la emisión, considerar inactivo
-            return timeSinceIssued > JwtConfig.INACTIVITY_TIMEOUT;
+            return timeSinceIssued > jwtConfig.INACTIVITY_TIMEOUT;
         } catch (JwtException | IllegalArgumentException e) {
             return true; // Si hay error, considerar inactivo por seguridad
         }

@@ -1,0 +1,41 @@
+services:
+  # Base de datos MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: ovycar-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Manchas12345.
+      MYSQL_DATABASE: ovycar_db
+      MYSQL_USER: ovycar_user
+      MYSQL_PASSWORD: ovycar_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-data.sql:/docker-entrypoint-initdb.d/init-data.sql
+    networks:
+      - ovycar-network
+
+  # Backend Spring Boot
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ovycar-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ovycar_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Manchas12345.
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    networks:
+      - ovycar-network
+
+volumes:
+  mysql_data:
+
+networks:
+  ovycar-network:
+    driver: bridge

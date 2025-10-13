@@ -20,10 +20,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final JwtConfig jwtConfig;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserDetailsService userDetailsService, JwtConfig jwtConfig) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.jwtConfig = jwtConfig;
     }
 
     @Override
@@ -33,18 +35,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         
-        final String authHeader = request.getHeader(JwtConfig.TOKEN_HEADER);
+        final String authHeader = request.getHeader(jwtConfig.TOKEN_HEADER);
         final String jwt;
         final String username;
         
         // Si no hay header de autorización o no empieza con "Bearer ", continuar
-        if (authHeader == null || !authHeader.startsWith(JwtConfig.TOKEN_PREFIX)) {
+        if (authHeader == null || !authHeader.startsWith(jwtConfig.TOKEN_PREFIX)) {
             filterChain.doFilter(request, response);
             return;
         }
         
         // Extraer el token (remover "Bearer ")
-        jwt = authHeader.substring(JwtConfig.TOKEN_PREFIX.length());
+        jwt = authHeader.substring(jwtConfig.TOKEN_PREFIX.length());
         
         try {
             // Extraer username del token
