@@ -1,10 +1,8 @@
 package com.talleres.ovycar.controller;
 
 import com.talleres.ovycar.dto.MantenimientoDTO;
-import com.talleres.ovycar.dto.DeleteInfoDTO;
 import com.talleres.ovycar.dto.CreateMantenimientoDTO;
 import com.talleres.ovycar.entity.Mantenimiento;
-import com.talleres.ovycar.entity.Factura;
 import com.talleres.ovycar.service.MantenimientoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -99,10 +97,9 @@ public class MantenimientoController {
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<MantenimientoDTO> updateMantenimiento(@PathVariable Long id, @RequestBody Mantenimiento mantenimiento) {
-        mantenimiento.setId(id);
+    public ResponseEntity<MantenimientoDTO> updateMantenimiento(@PathVariable Long id, @RequestBody CreateMantenimientoDTO updateMantenimientoDTO) {
         try {
-            MantenimientoDTO updatedMantenimiento = mantenimientoService.save(mantenimiento);
+            MantenimientoDTO updatedMantenimiento = mantenimientoService.updateFromDTO(id, updateMantenimientoDTO);
             return ResponseEntity.ok(updatedMantenimiento);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
@@ -130,38 +127,8 @@ public class MantenimientoController {
             mantenimientoService.deleteById(id);
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
-            // Return a more specific error response with the error message
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }
     }
-    
-    @DeleteMapping("/{id}/cascade")
-    public ResponseEntity<Object> deleteMantenimientoWithCascade(@PathVariable Long id) {
-        try {
-            mantenimientoService.deleteByIdWithCascade(id);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage()));
-        }
-    }
-    
-    @GetMapping("/{id}/can-delete")
-    public ResponseEntity<Object> canDeleteMantenimiento(@PathVariable Long id) {
-        boolean canDelete = mantenimientoService.canDeleteMantenimiento(id);
-        return ResponseEntity.ok(Map.of("canDelete", canDelete));
-    }
-    
-    @GetMapping("/{id}/facturas")
-    public ResponseEntity<Object> getFacturasByMantenimiento(@PathVariable Long id) {
-        List<Factura> facturas = mantenimientoService.getFacturasByMantenimientoId(id);
-        return ResponseEntity.ok(Map.of("facturas", facturas));
-    }
-    
-    @GetMapping("/{id}/delete-info")
-    public ResponseEntity<DeleteInfoDTO> getDeleteInfo(@PathVariable Long id) {
-        DeleteInfoDTO deleteInfo = mantenimientoService.getDeleteInfo(id);
-        return ResponseEntity.ok(deleteInfo);
-    }
-} 
+}

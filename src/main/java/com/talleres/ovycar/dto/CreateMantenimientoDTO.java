@@ -23,5 +23,6 @@ public class CreateMantenimientoDTO {
     private Double costoAdicionales;
     private String proveedorRepuestos;
     private String garantia;
+    private Long mecanicoId;
     private String mecanico;
 }

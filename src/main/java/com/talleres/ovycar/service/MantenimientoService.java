@@ -2,15 +2,14 @@ package com.talleres.ovycar.service;
 
 import com.talleres.ovycar.dto.MantenimientoDTO;
 import com.talleres.ovycar.dto.DetalleMantenimientoDTO;
-import com.talleres.ovycar.dto.DeleteInfoDTO;
 import com.talleres.ovycar.dto.CreateMantenimientoDTO;
 import com.talleres.ovycar.entity.Mantenimiento;
 import com.talleres.ovycar.entity.DetalleMantenimiento;
-import com.talleres.ovycar.entity.Factura;
+import com.talleres.ovycar.entity.Mecanico;
 import com.talleres.ovycar.repository.MantenimientoRepository;
 import com.talleres.ovycar.repository.ClienteRepository;
 import com.talleres.ovycar.repository.VehiculoRepository;
-import com.talleres.ovycar.repository.FacturaRepository;
+import com.talleres.ovycar.repository.MecanicoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
@@ -30,7 +29,8 @@ public class MantenimientoService {
     private final MantenimientoRepository mantenimientoRepository;
     private final ClienteRepository clienteRepository;
     private final VehiculoRepository vehiculoRepository;
-    private final FacturaRepository facturaRepository;
+    private final MecanicoRepository mecanicoRepository;
+    private final AuditoriaService auditoriaService;
     
     @Cacheable(value = "mantenimientos", key = "'all'")
     public List<MantenimientoDTO> findAll() {
@@ -143,9 +143,58 @@ public class MantenimientoService {
         mantenimiento.setCostoAdicionales(createMantenimientoDTO.getCostoAdicionales());
         mantenimiento.setProveedorRepuestos(createMantenimientoDTO.getProveedorRepuestos());
         mantenimiento.setGarantia(createMantenimientoDTO.getGarantia());
-        mantenimiento.setMecanico(createMantenimientoDTO.getMecanico());
-        
-        return convertToDTO(mantenimientoRepository.save(mantenimiento));
+        asignarMecanicoYGanancia(mantenimiento, createMantenimientoDTO.getMecanicoId(), createMantenimientoDTO.getMecanico());
+
+        MantenimientoDTO dto = convertToDTO(mantenimientoRepository.save(mantenimiento));
+        auditoriaService.registrar(AuditoriaService.MOD_MANTENIMIENTO, AuditoriaService.ACC_CREAR, dto.getId(),
+                "Mantenimiento creado · id " + dto.getId() + " · placa " + dto
+
+                        .getVehiculoPlaca()
+                        + " · " + dto.getVehiculoMarca() + " " + dto.getVehiculoModelo()
+                        + " · tipo " + dto.getTipoMantenimiento() + " · estado " + dto.getEstado()
+                        + " · cliente " + dto.getClienteNombre());
+        return dto;
+    }
+
+    @CacheEvict(value = "mantenimientos", allEntries = true)
+    public MantenimientoDTO updateFromDTO(Long id, CreateMantenimientoDTO updateMantenimientoDTO) {
+        Mantenimiento mantenimiento = mantenimientoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mantenimiento no encontrado"));
+
+        if (updateMantenimientoDTO.getVehiculoId() != null &&
+                !mantenimiento.getVehiculo().getId().equals(updateMantenimientoDTO.getVehiculoId())) {
+            Vehiculo vehiculo = vehiculoRepository.findById(updateMantenimientoDTO.getVehiculoId())
+                    .orElseThrow(() -> new RuntimeException("Vehículo no encontrado"));
+            mantenimiento.setVehiculo(vehiculo);
+            mantenimiento.setCliente(vehiculo.getCliente());
+        }
+
+        mantenimiento.setTipoMantenimiento(updateMantenimientoDTO.getTipoMantenimiento());
+        mantenimiento.setDescripcion(updateMantenimientoDTO.getDescripcion());
+        if (updateMantenimientoDTO.getFechaProgramada() != null) {
+            mantenimiento.setFechaProgramada(updateMantenimientoDTO.getFechaProgramada().atStartOfDay());
+        }
+        mantenimiento.setEstado(Mantenimiento.EstadoMantenimiento.valueOf(updateMantenimientoDTO.getEstado()));
+        mantenimiento.setKilometrajeActual(updateMantenimientoDTO.getKilometrajeActual());
+        mantenimiento.setObservaciones(updateMantenimientoDTO.getObservaciones());
+        mantenimiento.setCosto(updateMantenimientoDTO.getCosto());
+        mantenimiento.setCostoManoObra(updateMantenimientoDTO.getCostoManoObra());
+        mantenimiento.setValorRepuestos(updateMantenimientoDTO.getValorRepuestos());
+        mantenimiento.setCostoAdicionales(updateMantenimientoDTO.getCostoAdicionales());
+        mantenimiento.setProveedorRepuestos(updateMantenimientoDTO.getProveedorRepuestos());
+        mantenimiento.setGarantia(updateMantenimientoDTO.getGarantia());
+        asignarMecanicoYGanancia(mantenimiento, updateMantenimientoDTO.getMecanicoId(), updateMantenimientoDTO.getMecanico());
+
+        if (mantenimiento.getEstado() == Mantenimiento.EstadoMantenimiento.COMPLETADO &&
+                mantenimiento.getFechaFin() == null) {
+            mantenimiento.setFechaFin(LocalDateTime.now());
+        }
+
+        MantenimientoDTO dtoUpd = convertToDTO(mantenimientoRepository.save(mantenimiento));
+        auditoriaService.registrar(AuditoriaService.MOD_MANTENIMIENTO, AuditoriaService.ACC_ACTUALIZAR, dtoUpd.getId(),
+                "Mantenimiento actualizado · id " + dtoUpd.getId() + " · placa " + dtoUpd.getVehiculoPlaca()
+                        + " · estado " + dtoUpd.getEstado() + " · tipo " + dtoUpd.getTipoMantenimiento());
+        return dtoUpd;
     }
     
     @CacheEvict(value = "mantenimientos", allEntries = true)
@@ -174,6 +223,7 @@ public class MantenimientoService {
             existingMantenimiento.setProveedorRepuestos(mantenimiento.getProveedorRepuestos());
             existingMantenimiento.setGarantia(mantenimiento.getGarantia());
             existingMantenimiento.setMecanico(mantenimiento.getMecanico());
+            recalcularGananciaMecanico(existingMantenimiento);
             
             // Si el estado cambia a COMPLETADO, establecer la fecha de fin
             if (mantenimiento.getEstado() == Mantenimiento.EstadoMantenimiento.COMPLETADO && 
@@ -181,10 +231,16 @@ public class MantenimientoService {
                 existingMantenimiento.setFechaFin(LocalDateTime.now());
             }
             
-            return convertToDTO(mantenimientoRepository.save(existingMantenimiento));
+            MantenimientoDTO dtoSave = convertToDTO(mantenimientoRepository.save(existingMantenimiento));
+            auditoriaService.registrar(AuditoriaService.MOD_MANTENIMIENTO, AuditoriaService.ACC_ACTUALIZAR, dtoSave.getId(),
+                    "Mantenimiento guardado (actualización) · id " + dtoSave.getId() + " · placa " + dtoSave.getVehiculoPlaca());
+            return dtoSave;
         }
-        
-        return convertToDTO(mantenimientoRepository.save(mantenimiento));
+
+        MantenimientoDTO dtoNuevo = convertToDTO(mantenimientoRepository.save(mantenimiento));
+        auditoriaService.registrar(AuditoriaService.MOD_MANTENIMIENTO, AuditoriaService.ACC_CREAR, dtoNuevo.getId(),
+                "Mantenimiento creado (save) · id " + dtoNuevo.getId() + " · placa " + dtoNuevo.getVehiculoPlaca());
+        return dtoNuevo;
     }
     
     @CacheEvict(value = "mantenimientos", allEntries = true)
@@ -194,7 +250,10 @@ public class MantenimientoService {
             Mantenimiento mant = mantenimiento.get();
             mant.setEstado(Mantenimiento.EstadoMantenimiento.EN_PROCESO);
             mant.setFechaInicio(LocalDateTime.now());
-            return convertToDTO(mantenimientoRepository.save(mant));
+            MantenimientoDTO dtoIni = convertToDTO(mantenimientoRepository.save(mant));
+            auditoriaService.registrar(AuditoriaService.MOD_MANTENIMIENTO, AuditoriaService.ACC_CAMBIO_ESTADO, dtoIni.getId(),
+                    "Mantenimiento iniciado · id " + dtoIni.getId() + " · placa " + dtoIni.getVehiculoPlaca() + " · EN_PROCESO");
+            return dtoIni;
         }
         throw new RuntimeException("Mantenimiento no encontrado");
     }
@@ -206,7 +265,10 @@ public class MantenimientoService {
             Mantenimiento mant = mantenimiento.get();
             mant.setEstado(Mantenimiento.EstadoMantenimiento.COMPLETADO);
             mant.setFechaFin(LocalDateTime.now());
-            return convertToDTO(mantenimientoRepository.save(mant));
+            MantenimientoDTO dtoCmp = convertToDTO(mantenimientoRepository.save(mant));
+            auditoriaService.registrar(AuditoriaService.MOD_MANTENIMIENTO, AuditoriaService.ACC_CAMBIO_ESTADO, dtoCmp.getId(),
+                    "Mantenimiento completado · id " + dtoCmp.getId() + " · placa " + dtoCmp.getVehiculoPlaca() + " · COMPLETADO");
+            return dtoCmp;
         }
         throw new RuntimeException("Mantenimiento no encontrado");
     }
@@ -217,7 +279,10 @@ public class MantenimientoService {
         if (mantenimiento.isPresent()) {
             Mantenimiento mant = mantenimiento.get();
             mant.setEstado(Mantenimiento.EstadoMantenimiento.CANCELADO);
-            return convertToDTO(mantenimientoRepository.save(mant));
+            MantenimientoDTO dtoCan = convertToDTO(mantenimientoRepository.save(mant));
+            auditoriaService.registrar(AuditoriaService.MOD_MANTENIMIENTO, AuditoriaService.ACC_CAMBIO_ESTADO, dtoCan.getId(),
+                    "Mantenimiento cancelado · id " + dtoCan.getId() + " · placa " + dtoCan.getVehiculoPlaca() + " · CANCELADO");
+            return dtoCan;
         }
         throw new RuntimeException("Mantenimiento no encontrado");
     }
@@ -227,75 +292,13 @@ public class MantenimientoService {
         // Check if mantenimiento exists
         Mantenimiento mantenimiento = mantenimientoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mantenimiento no encontrado"));
-        
-        // Check if there are any facturas that reference this mantenimiento
-        if (facturaRepository.existsByMantenimientoId(id)) {
-            throw new RuntimeException("No se puede eliminar el mantenimiento porque tiene facturas asociadas. " +
-                    "Elimine las facturas relacionadas primero o cambie el estado del mantenimiento a CANCELADO.");
-        }
-        
-        // If no facturas are associated, proceed with deletion
+
+        String resumen = "Mantenimiento eliminado · id " + id + " · placa " + mantenimiento.getVehiculo().getPlaca()
+                + " · estado " + mantenimiento.getEstado();
         mantenimientoRepository.deleteById(id);
+        auditoriaService.registrar(AuditoriaService.MOD_MANTENIMIENTO, AuditoriaService.ACC_ELIMINAR, id, resumen);
     }
-    
-    @CacheEvict(value = "mantenimientos", allEntries = true)
-    public void deleteByIdWithCascade(Long id) {
-        // Check if mantenimiento exists
-        Mantenimiento mantenimiento = mantenimientoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Mantenimiento no encontrado"));
-        
-        // Delete associated facturas first
-        List<Factura> facturas = facturaRepository.findByMantenimientoId(id);
-        facturaRepository.deleteAll(facturas);
-        
-        // Then delete the mantenimiento
-        mantenimientoRepository.deleteById(id);
-    }
-    
-    public boolean canDeleteMantenimiento(Long id) {
-        // First check if mantenimiento exists
-        if (!mantenimientoRepository.existsById(id)) {
-            return false;
-        }
-        // Then check if there are no facturas associated
-        return !facturaRepository.existsByMantenimientoId(id);
-    }
-    
-    public List<Factura> getFacturasByMantenimientoId(Long id) {
-        // First check if mantenimiento exists
-        if (!mantenimientoRepository.existsById(id)) {
-            throw new RuntimeException("Mantenimiento no encontrado");
-        }
-        return facturaRepository.findByMantenimientoId(id);
-    }
-    
-    public DeleteInfoDTO getDeleteInfo(Long id) {
-        // Check if mantenimiento exists
-        if (!mantenimientoRepository.existsById(id)) {
-            return new DeleteInfoDTO(false, "Mantenimiento no encontrado", 0, null);
-        }
-        
-        // Check if there are facturas associated
-        List<Factura> facturas = facturaRepository.findByMantenimientoId(id);
-        boolean canDelete = facturas.isEmpty();
-        
-        String reason = canDelete ? 
-            "El mantenimiento puede ser eliminado" : 
-            "No se puede eliminar porque tiene facturas asociadas";
-        
-        List<DeleteInfoDTO.FacturaInfoDTO> facturasInfo = facturas.stream()
-            .map(factura -> new DeleteInfoDTO.FacturaInfoDTO(
-                factura.getId(),
-                factura.getNumeroFactura(),
-                factura.getEstado().toString(),
-                factura.getFechaEmision().toString(),
-                factura.getTotal().doubleValue()
-            ))
-            .collect(Collectors.toList());
-        
-        return new DeleteInfoDTO(canDelete, reason, facturas.size(), facturasInfo);
-    }
-    
+
     private MantenimientoDTO convertToDTO(Mantenimiento mantenimiento) {
         return new MantenimientoDTO(
                 mantenimiento.getId(),
@@ -320,7 +323,10 @@ public class MantenimientoService {
                 mantenimiento.getCostoAdicionales(),
                 mantenimiento.getProveedorRepuestos(),
                 mantenimiento.getGarantia(),
+                mantenimiento.getMecanicoAsignado() != null ? mantenimiento.getMecanicoAsignado().getId() : null,
                 mantenimiento.getMecanico(),
+                mantenimiento.getPorcentajeMecanico(),
+                mantenimiento.getGananciaMecanico(),
                 mantenimiento.getFechaRegistro(),
                 // Solo cargar detalles si están disponibles (lazy loading)
                 mantenimiento.getDetalles() != null && !mantenimiento.getDetalles().isEmpty() ? 
@@ -328,6 +334,27 @@ public class MantenimientoService {
                         .map(this::convertDetalleToDTO)
                         .collect(Collectors.toList()) : null
         );
+    }
+
+    private void asignarMecanicoYGanancia(Mantenimiento mantenimiento, Long mecanicoId, String mecanicoNombrePlano) {
+        if (mecanicoId != null) {
+            Mecanico mecanico = mecanicoRepository.findById(mecanicoId)
+                    .orElseThrow(() -> new RuntimeException("Mecánico no encontrado"));
+            mantenimiento.setMecanicoAsignado(mecanico);
+            mantenimiento.setMecanico(mecanico.getNombre());
+            mantenimiento.setPorcentajeMecanico(mecanico.getPorcentajeGanancia());
+        } else {
+            mantenimiento.setMecanicoAsignado(null);
+            mantenimiento.setMecanico(mecanicoNombrePlano);
+            mantenimiento.setPorcentajeMecanico(0.0);
+        }
+        recalcularGananciaMecanico(mantenimiento);
+    }
+
+    private void recalcularGananciaMecanico(Mantenimiento mantenimiento) {
+        double manoObra = mantenimiento.getCostoManoObra() != null ? mantenimiento.getCostoManoObra() : 0.0;
+        double porcentaje = mantenimiento.getPorcentajeMecanico() != null ? mantenimiento.getPorcentajeMecanico() : 0.0;
+        mantenimiento.setGananciaMecanico(manoObra * porcentaje);
     }
     
     private DetalleMantenimientoDTO convertDetalleToDTO(DetalleMantenimiento detalle) {

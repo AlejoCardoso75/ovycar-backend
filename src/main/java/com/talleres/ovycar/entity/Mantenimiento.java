@@ -74,6 +74,16 @@ public class Mantenimiento {
     
     @Column(name = "mecanico", length = 100)
     private String mecanico;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "mecanico_id")
+    private Mecanico mecanicoAsignado;
+
+    @Column(name = "porcentaje_mecanico")
+    private Double porcentajeMecanico;
+
+    @Column(name = "ganancia_mecanico")
+    private Double gananciaMecanico;
     
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro;

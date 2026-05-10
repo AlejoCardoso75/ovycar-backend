@@ -20,6 +20,7 @@ public class VehiculoService {
     
     private final VehiculoRepository vehiculoRepository;
     private final ClienteRepository clienteRepository;
+    private final AuditoriaService auditoriaService;
     
     public List<VehiculoDTO> findAll() {
         return vehiculoRepository.findAll()
@@ -60,10 +61,17 @@ public class VehiculoService {
     }
     
     public VehiculoDTO save(Vehiculo vehiculo) {
-        if (vehiculo.getId() == null && vehiculoRepository.existsByPlacaAndActivoTrue(vehiculo.getPlaca())) {
+        boolean esNuevo = vehiculo.getId() == null;
+        if (esNuevo && vehiculoRepository.existsByPlacaAndActivoTrue(vehiculo.getPlaca())) {
             throw new RuntimeException("Ya existe un vehículo activo con la placa: " + vehiculo.getPlaca());
         }
-        return convertToDTO(vehiculoRepository.save(vehiculo));
+        Vehiculo v = vehiculoRepository.save(vehiculo);
+        VehiculoDTO dto = convertToDTO(v);
+        String acc = esNuevo ? AuditoriaService.ACC_CREAR : AuditoriaService.ACC_ACTUALIZAR;
+        auditoriaService.registrar(AuditoriaService.MOD_VEHICULO, acc, dto.getId(),
+                (esNuevo ? "Vehículo creado (save): " : "Vehículo actualizado (save): ")
+                        + "placa " + dto.getPlaca());
+        return dto;
     }
     
     public VehiculoDTO createFromDTO(CreateVehiculoDTO createVehiculoDTO) {
@@ -88,7 +96,12 @@ public class VehiculoService {
         vehiculo.setKilometraje(createVehiculoDTO.getKilometraje());
         vehiculo.setActivo(true);
         
-        return convertToDTO(vehiculoRepository.save(vehiculo));
+        vehiculo = vehiculoRepository.save(vehiculo);
+        VehiculoDTO dto = convertToDTO(vehiculo);
+        auditoriaService.registrar(AuditoriaService.MOD_VEHICULO, AuditoriaService.ACC_CREAR, dto.getId(),
+                "Vehículo creado: placa " + dto.getPlaca() + " · " + dto.getMarca() + " " + dto.getModelo()
+                        + " · clienteId " + dto.getClienteId());
+        return dto;
     }
     
     public VehiculoDTO updateFromDTO(Long id, CreateVehiculoDTO createVehiculoDTO) {
@@ -115,11 +128,19 @@ public class VehiculoService {
         vehiculo.setNumeroVin(createVehiculoDTO.getNumeroVin());
         vehiculo.setKilometraje(createVehiculoDTO.getKilometraje());
         
-        return convertToDTO(vehiculoRepository.save(vehiculo));
+        vehiculo = vehiculoRepository.save(vehiculo);
+        VehiculoDTO dto = convertToDTO(vehiculo);
+        auditoriaService.registrar(AuditoriaService.MOD_VEHICULO, AuditoriaService.ACC_ACTUALIZAR, dto.getId(),
+                "Vehículo actualizado: placa " + dto.getPlaca() + " · " + dto.getMarca() + " " + dto.getModelo());
+        return dto;
     }
     
     public void deleteById(Long id) {
-        vehiculoRepository.deleteById(id);
+        vehiculoRepository.findById(id).ifPresent(v -> {
+            String resumen = "Vehículo eliminado: placa " + v.getPlaca() + " · " + v.getMarca() + " " + v.getModelo();
+            vehiculoRepository.deleteById(id);
+            auditoriaService.registrar(AuditoriaService.MOD_VEHICULO, AuditoriaService.ACC_ELIMINAR, id, resumen);
+        });
     }
     
     private VehiculoDTO convertToDTO(Vehiculo vehiculo) {

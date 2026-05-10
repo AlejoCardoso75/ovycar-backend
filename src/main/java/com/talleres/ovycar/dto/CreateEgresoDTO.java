@@ -17,4 +17,6 @@ public class CreateEgresoDTO {
     private String categoria;
     private LocalDateTime fechaEgreso;
     private String responsable;
+    /** Si se envía en actualización, permite registrar cambio de estado (activo/inactivo). */
+    private Boolean activo;
 }

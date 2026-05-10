@@ -5,9 +5,13 @@ import com.talleres.ovycar.dto.CreateVehiculoDTO;
 import com.talleres.ovycar.entity.Vehiculo;
 import com.talleres.ovycar.service.VehiculoService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/vehiculos")
@@ -71,8 +75,18 @@ public class VehiculoController {
     }
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteVehiculo(@PathVariable Long id) {
-        vehiculoService.deleteById(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> deleteVehiculo(@PathVariable Long id) {
+        try {
+            vehiculoService.deleteById(id);
+            return ResponseEntity.ok().build();
+        } catch (EmptyResultDataAccessException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    Map.of("message", "No se encontró el vehículo que intentas eliminar.")
+            );
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    Map.of("message", "No se puede eliminar el vehículo porque tiene mantenimientos asociados.")
+            );
+        }
     }
 } 

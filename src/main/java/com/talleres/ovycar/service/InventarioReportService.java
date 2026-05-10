@@ -167,7 +167,7 @@ public class InventarioReportService {
             .setTextAlignment(TextAlignment.RIGHT)
             .setMarginBottom(5);
 
-        Paragraph reportContact = new Paragraph("Cel: 316 307 0025 - 311 224 0983 | Email: info@talleresoviedo.com")
+        Paragraph reportContact = new Paragraph("Cel: 311 224 0983 | Email: info@talleresoviedo.com")
             .setFont(fontNormal)
             .setFontSize(10)
             .setTextAlignment(TextAlignment.RIGHT);
@@ -342,7 +342,7 @@ public class InventarioReportService {
             .setMarginBottom(5);
         document.add(footer);
 
-        Paragraph footerContact = new Paragraph("Cel: 316 307 0025 - 311 224 0983 | info@talleresoviedo.com")
+        Paragraph footerContact = new Paragraph("Cel: 311 224 0983 | info@talleresoviedo.com")
             .setFont(fontNormal)
             .setFontSize(8)
             .setTextAlignment(TextAlignment.CENTER)

@@ -32,7 +32,10 @@ public class MantenimientoDTO {
     private Double costoAdicionales;
     private String proveedorRepuestos;
     private String garantia;
+    private Long mecanicoId;
     private String mecanico;
+    private Double porcentajeMecanico;
+    private Double gananciaMecanico;
     private LocalDateTime fechaRegistro;
     private List<DetalleMantenimientoDTO> detalles;
 } 

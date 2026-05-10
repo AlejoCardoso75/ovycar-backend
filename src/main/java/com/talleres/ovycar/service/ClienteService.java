@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 public class ClienteService {
     
     private final ClienteRepository clienteRepository;
+    private final AuditoriaService auditoriaService;
     
     public List<ClienteDTO> findAll() {
         return clienteRepository.findAll()
@@ -42,6 +43,7 @@ public class ClienteService {
     }
     
     public ClienteDTO save(Cliente cliente) {
+        boolean esNuevo = cliente.getId() == null;
         // Validar campos obligatorios
         if (cliente.getNombre() == null || cliente.getNombre().trim().isEmpty()) {
             throw new RuntimeException("El nombre es obligatorio");
@@ -64,11 +66,23 @@ public class ClienteService {
             cliente.setDireccion(null);
         }
         
-        return convertToDTO(clienteRepository.save(cliente));
+        Cliente saved = clienteRepository.save(cliente);
+        ClienteDTO dto = convertToDTO(saved);
+        String acc = esNuevo ? AuditoriaService.ACC_CREAR : AuditoriaService.ACC_ACTUALIZAR;
+        auditoriaService.registrar(AuditoriaService.MOD_CLIENTE, acc, dto.getId(),
+                (esNuevo ? "Cliente creado: " : "Cliente actualizado: ")
+                        + dto.getNombre() + " " + dto.getApellido()
+                        + (dto.getDocumento() != null ? " · Doc " + dto.getDocumento() : ""));
+        return dto;
     }
     
     public void deleteById(Long id) {
-        clienteRepository.deleteById(id);
+        clienteRepository.findById(id).ifPresent(c -> {
+            String resumen = "Cliente eliminado: " + c.getNombre() + " " + c.getApellido()
+                    + (c.getDocumento() != null ? " · Doc " + c.getDocumento() : "");
+            clienteRepository.deleteById(id);
+            auditoriaService.registrar(AuditoriaService.MOD_CLIENTE, AuditoriaService.ACC_ELIMINAR, id, resumen);
+        });
     }
     
     private ClienteDTO convertToDTO(Cliente cliente) {

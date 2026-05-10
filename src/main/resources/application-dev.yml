@@ -26,13 +26,9 @@ spring:
   jpa:
     defer-datasource-initialization: true
   
-  # Configuración de seguridad (temporalmente deshabilitada para desarrollo)
-  autoconfigure:
-    exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
-
 # Configuración del servidor
 server:
-  port: 8080
+  port: 8081
 
 # Configuración de logging
 logging:
