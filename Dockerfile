@@ -1,23 +1,20 @@
-# Usar imagen oficial de OpenJDK 17 con Maven
-FROM openjdk:17-jdk-slim
+# Etapa 1: build con Maven (imagen mantenida; openjdk oficial ya no existe en Docker Hub)
+FROM maven:3.9-eclipse-temurin-17 AS builder
 
-# Instalar Maven
-RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
-
-# Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar el archivo pom.xml
 COPY pom.xml .
-
-# Copiar el código fuente
 COPY src ./src
 
-# Construir la aplicación
 RUN mvn clean package -DskipTests
 
-# Exponer el puerto
+# Etapa 2: solo JRE para ejecutar el jar (imagen más liviana)
+FROM eclipse-temurin:17-jre-jammy
+
+WORKDIR /app
+
+COPY --from=builder /app/target/ovycar-0.0.1-SNAPSHOT.jar app.jar
+
 EXPOSE 8081
 
-# Comando para ejecutar la aplicación
-CMD ["java", "-jar", "target/ovycar-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "app.jar"]

@@ -2,14 +2,12 @@ spring:
   application:
     name: ovycar
   
-  # Configuración de la base de datos
   datasource:
-    url: jdbc:mysql://localhost:3306/ovycar_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
-    username: root
-    password: Manchas12345.
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/ovycar_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DATABASE_USER:root}
+    password: ${DATABASE_PASS:Manchas12345.}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  
-  # Configuración JPA/Hibernate
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -18,13 +16,11 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
-  
-# Configuración del servidor
-server:
-  port: 8081
 
-# Configuración de logging
+server:
+  port: ${PORT:8081}
+
 logging:
   level:
     com.talleres.ovycar: DEBUG
-    org.springframework.security: DEBUG 
+    org.springframework.security: DEBUG
