@@ -29,7 +29,7 @@ services:
       dockerfile: Dockerfile
     container_name: ovycar-backend
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ovycar_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ovycar_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: Manchas12345.
     ports:
