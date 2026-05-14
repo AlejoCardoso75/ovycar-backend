@@ -51,12 +51,12 @@ public class InventarioReportService {
 
         try {
             // Intentar cargar la imagen del logo - probar diferentes rutas
-            ClassPathResource logoResource = new ClassPathResource("static/images/logo-taller.png");
+            ClassPathResource logoResource = new ClassPathResource("static/images/logo-taller-nuevo.png");
             if (!logoResource.exists()) {
-                logoResource = new ClassPathResource("images/logo-taller.png");
+                logoResource = new ClassPathResource("images/logo-taller-nuevo.png");
             }
             if (!logoResource.exists()) {
-                logoResource = new ClassPathResource("logo-taller.png");
+                logoResource = new ClassPathResource("logo-taller-nuevo.png");
             }
             
             System.out.println("Intentando cargar logo desde: " + logoResource.getPath());

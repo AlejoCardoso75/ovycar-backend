@@ -4,7 +4,7 @@ spring:
   
   # Configuración de la base de datos
   datasource:
-    url: jdbc:mysql://localhost:3306/ovycar_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
+    url: jdbc:mysql://localhost:3306/ovycar_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull
     username: root
     password: password
     driver-class-name: com.mysql.cj.jdbc.Driver
