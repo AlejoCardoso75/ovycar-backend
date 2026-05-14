@@ -1,6 +1,7 @@
 package com.talleres.ovycar.controller;
 
 import com.talleres.ovycar.dto.AuthResponseDTO;
+import com.talleres.ovycar.dto.CreateUsuarioRequestDTO;
 import com.talleres.ovycar.dto.LoginDTO;
 import com.talleres.ovycar.dto.RegisterDTO;
 import com.talleres.ovycar.service.AuthService;
@@ -24,6 +25,17 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDTO> register(@RequestBody RegisterDTO registerDTO) {
         AuthResponseDTO response = authService.register(registerDTO);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Solo con base vacía. Cabecera {@code X-Ovycar-Bootstrap-Secret} = variable {@code OVYCAR_BOOTSTRAP_SECRET} en Railway.
+     */
+    @PostMapping("/bootstrap-first-admin")
+    public ResponseEntity<AuthResponseDTO> bootstrapFirstAdmin(
+            @RequestHeader(value = "X-Ovycar-Bootstrap-Secret", required = false) String bootstrapSecret,
+            @RequestBody CreateUsuarioRequestDTO body) {
+        AuthResponseDTO response = authService.bootstrapFirstAdmin(bootstrapSecret, body);
         return ResponseEntity.ok(response);
     }
 

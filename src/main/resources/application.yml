@@ -24,3 +24,8 @@ logging:
   level:
     com.talleres.ovycar: DEBUG
     org.springframework.security: DEBUG
+
+# Primer admin sin JWT: solo si no hay ningún usuario. En Railway defina OVYCAR_BOOTSTRAP_SECRET,
+# ejecute el endpoint una vez y elimine o vacíe la variable.
+ovycar:
+  bootstrap-secret: ${OVYCAR_BOOTSTRAP_SECRET:}

@@ -1,11 +1,13 @@
 package com.talleres.ovycar.service;
 
 import com.talleres.ovycar.dto.AuthResponseDTO;
+import com.talleres.ovycar.dto.CreateUsuarioRequestDTO;
 import com.talleres.ovycar.dto.LoginDTO;
 import com.talleres.ovycar.dto.RegisterDTO;
 import com.talleres.ovycar.entity.Usuario;
 import com.talleres.ovycar.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -17,11 +19,15 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    
+
     private final UsuarioRepository usuarioRepository;
+    private final UsuarioService usuarioService;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${ovycar.bootstrap-secret:}")
+    private String bootstrapSecret;
     
     public AuthResponseDTO login(LoginDTO loginDTO) {
         try {
@@ -244,5 +250,75 @@ public class AuthService {
             "No se pudo extender la sesión",
             false
         );
+    }
+
+    /**
+     * Crea el primer usuario (típicamente ADMIN) cuando la base está vacía.
+     * Requiere cabecera {@code X-Ovycar-Bootstrap-Secret} igual a {@code ovycar.bootstrap-secret} / {@code OVYCAR_BOOTSTRAP_SECRET}.
+     */
+    public AuthResponseDTO bootstrapFirstAdmin(String headerSecret, CreateUsuarioRequestDTO dto) {
+        if (bootstrapSecret == null || bootstrapSecret.isBlank()) {
+            return new AuthResponseDTO(
+                    null, null, null, null, null,
+                    "Arranque desactivado: defina la variable de entorno OVYCAR_BOOTSTRAP_SECRET en el servidor",
+                    false
+            );
+        }
+        if (headerSecret == null || headerSecret.isBlank()) {
+            return new AuthResponseDTO(
+                    null, null, null, null, null,
+                    "Falta la cabecera X-Ovycar-Bootstrap-Secret",
+                    false
+            );
+        }
+        if (!bootstrapSecret.equals(headerSecret)) {
+            return new AuthResponseDTO(
+                    null, null, null, null, null,
+                    "Clave de arranque incorrecta",
+                    false
+            );
+        }
+        if (usuarioRepository.count() > 0) {
+            return new AuthResponseDTO(
+                    null, null, null, null, null,
+                    "Ya existen usuarios. Use login o pida a un administrador que cree cuentas",
+                    false
+            );
+        }
+        try {
+            usuarioService.crearUsuarioAdmin(dto);
+        } catch (IllegalArgumentException e) {
+            return new AuthResponseDTO(
+                    null, null, null, null, null,
+                    e.getMessage(),
+                    false
+            );
+        } catch (Exception e) {
+            return new AuthResponseDTO(
+                    null, null, null, null, null,
+                    "Error al crear el usuario: " + e.getMessage(),
+                    false
+            );
+        }
+        return usuarioRepository.findByUsername(dto.getUsername().trim())
+                .map(u -> new AuthResponseDTO(
+                        jwtService.generateToken(
+                                u.getUsername(),
+                                u.getNombre(),
+                                u.getApellido(),
+                                u.getRol()
+                        ),
+                        u.getUsername(),
+                        u.getNombre(),
+                        u.getApellido(),
+                        u.getRol(),
+                        "Primer administrador creado. Guarde el token y elimine OVYCAR_BOOTSTRAP_SECRET del servidor",
+                        true
+                ))
+                .orElse(new AuthResponseDTO(
+                        null, null, null, null, null,
+                        "Usuario no encontrado tras crear",
+                        false
+                ));
     }
 }
