@@ -123,7 +123,8 @@ public class AuthService {
             nuevoUsuario.setNombre(registerDTO.getNombre());
             nuevoUsuario.setApellido(registerDTO.getApellido());
             nuevoUsuario.setEmail(registerDTO.getEmail());
-            nuevoUsuario.setRol(registerDTO.getRol() != null ? registerDTO.getRol() : "USER");
+            // Registro público: siempre USER (los ADMIN se crean vía POST /api/admin/usuarios con JWT admin)
+            nuevoUsuario.setRol("USER");
             nuevoUsuario.setActivo(true);
             nuevoUsuario.setFechaCreacion(LocalDateTime.now());
             
