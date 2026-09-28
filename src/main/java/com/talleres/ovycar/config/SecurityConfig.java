@@ -75,10 +75,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:4200",
-                "http://127.0.0.1:4200",
-
+        // Angular local puede estar en 4200, 4201, etc. Sin este patrón el navegador
+        // corta el POST (status 0: "Error de conexión con el servidor").
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
                 "https://ovycar-frontend.vercel.app"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));

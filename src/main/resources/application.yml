@@ -5,7 +5,7 @@ spring:
   datasource:
     url: ${DATABASE_URL:jdbc:mysql://localhost:3306/ovycar_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull}
     username: ${DATABASE_USER:root}
-    password: ${DATABASE_PASS:Manchas12345.}
+    password: ${DATABASE_PASS:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
