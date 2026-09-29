@@ -20,7 +20,7 @@ public class JwtService {
     @Autowired
     public JwtService(JwtConfig jwtConfig) {
         this.jwtConfig = jwtConfig;
-        this.secretKey = Keys.hmacShaKeyFor(jwtConfig.SECRET_KEY.getBytes());
+        this.secretKey = Keys.hmacShaKeyFor(jwtConfig.getSecretKey().getBytes());
     }
     
     public String generateToken(String username, String nombre, String apellido, String rol) {

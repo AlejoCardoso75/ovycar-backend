@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: ovycar-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USER
+        sync: false
+      - key: DATABASE_PASS
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://*.vercel.app,http://localhost:*,http://127.0.0.1:*
+      - key: JPA_DDL_AUTO
+        value: update
+      - key: DB_POOL_SIZE
+        value: "5"

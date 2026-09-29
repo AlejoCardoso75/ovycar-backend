@@ -1,22 +1,11 @@
-# Archivos de Maven
-target/
-.mvn/wrapper/maven-wrapper.jar
-.mvn/wrapper/maven-wrapper.properties
-
-# Archivos de IDE
-.idea/
-.vscode/
+.git
+.idea
 *.iml
-*.ipr
-*.iws
-
-# Archivos del sistema
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Archivos temporales
-*.tmp
-*.temp
+target
+**/.DS_Store
+**/Thumbs.db
+postman
+*.md
+.dockerignore
+docker-compose.yml
+render.yaml

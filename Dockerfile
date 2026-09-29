@@ -1,20 +1,25 @@
-# Etapa 1: build con Maven (imagen mantenida; openjdk oficial ya no existe en Docker Hub)
-FROM maven:3.9-eclipse-temurin-17 AS builder
-
+# Build
+FROM eclipse-temurin:17-jdk-jammy AS build
 WORKDIR /app
 
-COPY pom.xml .
-COPY src ./src
+COPY mvnw pom.xml ./
+COPY .mvn .mvn
+RUN chmod +x mvnw && sed -i 's/\r$//' mvnw
+RUN ./mvnw -B dependency:go-offline
 
-RUN mvn clean package -DskipTests
+COPY src src
+RUN ./mvnw -B package -DskipTests
 
-# Etapa 2: solo JRE para ejecutar el jar (imagen más liviana)
+# Runtime
 FROM eclipse-temurin:17-jre-jammy
-
 WORKDIR /app
 
-COPY --from=builder /app/target/ovycar-0.0.1-SNAPSHOT.jar app.jar
+RUN useradd --system --create-home --uid 10001 appuser
+COPY --from=build /app/target/*.jar /app/app.jar
+USER appuser
 
 EXPOSE 8081
 
-CMD ["java", "-jar", "app.jar"]
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
